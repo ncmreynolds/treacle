@@ -6,7 +6,9 @@
  * 
  * Any incoming messages will be printed to the Serial Monitor.
  * 
- * This example expects to receive a null-terminated string but will also print out binary data received if it is not null-terminated
+ * This example relies on MsgPack for deciphering the payload and it is assumed this is how it will be encoded.
+ * 
+ * You do not have to use MsgPack, any binary data can be sent.
  * 
  */
 
@@ -19,7 +21,7 @@ void setup()
   Serial.begin(115200);                     //Set up the Serial Monitor
   delay(1000);                              //Allow the IDE Serial Monitor to start after flashing
   treacle.enableDebug(Serial);              //Enable debug on Serial
-  treacle.enableEspNow();                   //Enable ESP-Now
+  treacle.enableLoRa();                     //Enable LoRa
   treacle.setEncryptionKey(encryptionKey);  //Set encryption key for all protocols
   treacle.begin();                          //Start treacle
 }

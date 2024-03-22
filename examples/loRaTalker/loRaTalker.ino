@@ -18,7 +18,7 @@ void setup()
   Serial.begin(115200);                     //Set up the Serial Monitor
   delay(1000);                              //Allow the IDE Serial Monitor to start after flashing
   treacle.enableDebug(Serial);              //Enable debug on Serial
-  treacle.enableEspNow();                   //Enable ESP-Now
+  treacle.enableLoRa();                     //Enable LoRa
   treacle.setEncryptionKey(encryptionKey);  //Set encryption key for all protocols
   treacle.begin();                          //Start treacle
 }
@@ -35,7 +35,7 @@ void loop()
     timeOfLastMessage = millis();
     if(treacle.online() == true)
     {
-      Serial.print("Queuing message: '");
+      Serial.print("Sending message: '");
       Serial.print(message);
       Serial.print("' - ");
       if(treacle.queueMessage(message))
@@ -44,7 +44,7 @@ void loop()
       }
       else
       {
-        Serial.println("failed, perhaps queue is full");
+        Serial.println("failed");
       }
     }
     else
