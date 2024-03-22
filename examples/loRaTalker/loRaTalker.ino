@@ -4,7 +4,7 @@
  * 
  * This example simply enables logging and starts treacle with ESP-Now as a transport.
  * 
- * Any incoming messages will be printed to the Serial Monitor
+ * It regularly queues a null-terminataed string to send by treacle
  * 
  */
 #include <treacle.h>
@@ -12,15 +12,19 @@
 uint8_t encryptionKey[] = {0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80};
 uint32_t timeOfLastMessage = 0;
 char message[] = "Hello there";
+uint8_t loRaCsPin = 34;
+uint8_t loRaResetPin = 33;
 
 void setup()
 {
-  Serial.begin(115200);                     //Set up the Serial Monitor
-  delay(1000);                              //Allow the IDE Serial Monitor to start after flashing
-  treacle.enableDebug(Serial);              //Enable debug on Serial
-  treacle.enableLoRa();                     //Enable LoRa
-  treacle.setEncryptionKey(encryptionKey);  //Set encryption key for all protocols
-  treacle.begin();                          //Start treacle
+  Serial.begin(115200);                         //Set up the Serial Monitor
+  delay(1000);                                  //Allow the IDE Serial Monitor to start after flashing
+  treacle.enableDebug(Serial);                  //Enable debug on Serial
+  treacle.setLoRaPins(loRaCsPin, loRaResetPin); //Set the LoRa reset and CS pins, assuming other default SPI pins
+  treacle.setLoRaFrequency(868E6);              //Set the LoRa frequency to 868Mhz. Valid value are 433/868/915Mhz depending on region
+  treacle.enableLoRa();                         //Enable LoRa
+  treacle.setEncryptionKey(encryptionKey);      //Set encryption key for all protocols
+  treacle.begin();                              //Start treacle
 }
 
 void loop()
@@ -35,7 +39,7 @@ void loop()
     timeOfLastMessage = millis();
     if(treacle.online() == true)
     {
-      Serial.print("Sending message: '");
+      Serial.print("Queuing message: '");
       Serial.print(message);
       Serial.print("' - ");
       if(treacle.queueMessage(message))
@@ -44,7 +48,7 @@ void loop()
       }
       else
       {
-        Serial.println("failed");
+        Serial.println("failed, perhaps queue is full");
       }
     }
     else

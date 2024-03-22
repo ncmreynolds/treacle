@@ -194,7 +194,6 @@ bool treacleClass::espNowInitialised()
 		return protocol[espNowProtocolId].initialised;
 	}
 	return false;
-	//return protocolInitialised[espNowProtocolId];
 }
 void treacleClass::setEspNowChannel(uint8_t channel)
 {
@@ -330,7 +329,8 @@ bool treacleClass::initialiseEspNow()
 							{
 								//if(receivedMessage[(uint8_t)treacle.headerPosition::recipient] == treacle.currentNodeId ||
 								//	receivedMessage[(uint8_t)treacle.headerPosition::recipient] == 0xff)
-								//if()
+								treacle.protocol[treacle.espNowProtocolId].rxPackets++;						//Count the packet as received
+								if(true)																	//Packet is meaningful to this node
 								{
 									memcpy(&treacle.receiveBuffer,receivedMessage,receivedMessageLength);	//Copy the ESP-Now payload
 									treacle.receiveBufferSize = receivedMessageLength;						//Record the amount of payload
@@ -338,7 +338,6 @@ bool treacleClass::initialiseEspNow()
 									treacle.receiveProtocol = treacle.espNowProtocolId;						//Record that it was received by ESP-Now
 									treacle.protocol[treacle.espNowProtocolId].rxPacketsProcessed++;		//Count the packet as processed
 								}
-								treacle.protocol[treacle.espNowProtocolId].rxPackets++;						//Count the packet as received
 							}
 							else
 							{
@@ -369,7 +368,6 @@ bool treacleClass::initialiseEspNow()
 					) == ESP_OK)
 					{
 						protocol[espNowProtocolId].initialised = true;
-						//protocolInitialised[espNowProtocolId] = true;
 						debugPrintln(debugString_OK);
 						return true;
 					}
@@ -378,7 +376,6 @@ bool treacleClass::initialiseEspNow()
 		}
 	}
 	protocol[espNowProtocolId].initialised = false;
-	//protocolInitialised[espNowProtocolId] = false;
 	debugPrintln(debugString_failed);
 	return false;
 }
@@ -462,6 +459,10 @@ void treacleClass::setLoRaPins(int8_t cs, int8_t reset, int8_t irq)
 	loRaResetPin = reset;				//LoRa radio reset pin
 	loRaIrqPin = irq;					//LoRa radio interrupt pin
 }
+void treacleClass::setLoRaFrequency(uint32_t mhz)
+{
+	loRaFrequency = mhz;
+}
 void treacleClass::enableLoRa()
 {
 	debugPrint(debugString_treacleSpace);
@@ -497,16 +498,24 @@ bool treacleClass::initialiseLoRa()
 		LoRa.receive();											//Start LoRa reception
 		debugPrintln(debugString_OK);
 		protocol[loRaProtocolId].initialised = true;			//Mark as initialised
-		//protocolInitialised[loRaProtocolId] = true;				//Mark as initialised
+		LoRa.onTxDone(											//Send callback function
+			[]() {
+				if(treacle.protocol[treacle.loRaProtocolId].txStartTime != 0)			//Check the initial send time was recorded
+				{
+					treacle.protocol[treacle.loRaProtocolId].txTime += micros()			//Add to the total transmit time
+						- treacle.protocol[treacle.loRaProtocolId].txStartTime;
+					treacle.protocol[treacle.loRaProtocolId].txStartTime = 0;			//Clear the initial send time
+				}
+				treacle.protocol[treacle.loRaProtocolId].txPackets++;					//Count the packet
+			}
+		);
 	}
 	else
 	{
 		debugPrintln(debugString_failed);
 		protocol[loRaProtocolId].initialised = false;			//Mark as not initialised
-		//protocolInitialised[loRaProtocolId] = false;			//Mark as not initialised
 	}
 	return protocol[loRaProtocolId].initialised;
-	//return protocolInitialised[loRaProtocolId];
 }
 bool treacleClass::loRaInitialised()
 {
@@ -515,10 +524,48 @@ bool treacleClass::loRaInitialised()
 		return protocol[loRaProtocolId].initialised;
 	}
 	return false;
-	//return protocolInitialised[loRaProtocolId];
 }
 bool treacleClass::sendBufferByLoRa(uint8_t* buffer, uint8_t packetSize)
 {
+	if(LoRa.beginPacket())
+	{
+		LoRa.write(buffer, packetSize);
+		protocol[loRaProtocolId].txStartTime = micros();
+		if(LoRa.endPacket(true))
+		{
+			return true;
+		}
+	}
+	protocol[loRaProtocolId].txStartTime = 0;
+	return false;
+}
+bool treacleClass::receiveLoRa()
+{
+	uint8_t receivedMessageLength = LoRa.parsePacket();
+	if(receivedMessageLength > 0)
+	{
+		if(receiveBufferSize == 0 && receivedMessageLength < treacle.maximumBufferSize)
+		{
+			protocol[loRaProtocolId].rxPackets++;						//Count the packet as received
+			if(true)													//Packet is meaningful to this node
+			{
+				LoRa.readBytes(receiveBuffer, receivedMessageLength);	//Copy the LoRa payload
+				receiveBufferSize = receivedMessageLength;				//Record the amount of payload
+				receiveBufferCrcChecked = false;						//Mark the payload as unchecked
+				receiveProtocol = loRaProtocolId;						//Record that it was received by ESP-Now
+				protocol[loRaProtocolId].rxPacketsProcessed++;			//Count the packet as processed
+				return true;
+			}
+		}
+		else
+		{
+			protocol[loRaProtocolId].rxPacketsDropped++;				//Count the drop
+		}
+		while(LoRa.available())											//Drop the packet
+		{
+			LoRa.read();
+		}
+	}
 	return false;
 }
 /*
@@ -544,7 +591,6 @@ bool treacleClass::cobsInitialised()
 		return protocol[cobsProtocolId].initialised;
 	}
 	return false;
-	//return protocolInitialised[cobsProtocolId];
 }
 bool treacleClass::initialiseCobs()
 {
@@ -1440,6 +1486,10 @@ void treacleClass::clearReceiveBuffer()
 }
 uint32_t treacleClass::messageWaiting()
 {
+	if(loRaProtocolId != 255 && protocol[loRaProtocolId].initialised == true && loRaIrqPin == -1)	//Polling method for loRa packets, must be enabled and initialised
+	{
+		receiveLoRa();
+	}
 	if(currentState == state::uninitialised || currentState == state::starting || currentState == state::stopped)
 	{
 		return 0;						//Nothing can be sent or received in these states
@@ -1511,7 +1561,7 @@ bool treacleClass::queueMessage(const unsigned char* data, uint8_t length)
 }
 bool treacleClass::queueMessage(uint8_t* data, uint8_t length)
 {
-	if(length < maximumPayloadSize)
+	if(length < maximumPayloadSize && noPacketInQueue())
 	{
 		for (uint8_t protocolId = 0; protocolId < numberOfActiveProtocols; protocolId++)
 		{

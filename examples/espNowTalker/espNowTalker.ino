@@ -4,7 +4,7 @@
  * 
  * This example simply enables logging and starts treacle with ESP-Now as a transport.
  * 
- * Any incoming messages will be printed to the Serial Monitor
+ * It regularly queues a null-terminataed string to send by treacle
  * 
  */
 #include <treacle.h>

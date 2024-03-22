@@ -46,6 +46,7 @@ class treacleClass	{
 		//LoRa
 		void setLoRaPins(int8_t cs, int8_t reset,	//Set the GPIO for the LoRa radio
 			int8_t irq = -1);
+		void setLoRaFrequency(uint32_t mhz);		//Set the LoRa frequency
 		void enableLoRa();							//Enable the LoRa radio
 		bool loRaEnabled();							//Is LoRa radio enabled?
 		bool loRaInitialised();						//Is LoRa radio correctly initialised?
@@ -269,9 +270,9 @@ class treacleClass	{
 		
 		//LoRa specific settings
 		uint8_t loRaProtocolId = 255;				//ID assigned to this protocol if enabled, 255 implies it is not
-		int8_t loRaCSpin = 7;						//LoRa radio chip select pin
-		int8_t loRaResetPin = 2;					//LoRa radio reset pin
-		int8_t loRaIrqPin = 10;						//LoRa radio interrupt pin
+		int8_t loRaCSpin = -1;						//LoRa radio chip select pin
+		int8_t loRaResetPin = -1;					//LoRa radio reset pin
+		int8_t loRaIrqPin = -1;						//LoRa radio interrupt pin
 		uint32_t loRaFrequency = 868E6;				//LoRa frequency, broadly 868 in the EU, US is 915E6, Asia 433E6
 		uint8_t defaultLoRaTxPower = 17;			//LoRa TX power
 		uint8_t defaultLoRaSpreadingFactor = 7;		//LoRa spreading factor
@@ -282,6 +283,7 @@ class treacleClass	{
 		bool initialiseLoRa();						//Initialise LoRa and return result
 		bool sendBufferByLoRa(uint8_t*,				//Send a buffer using ESP-Now
 			uint8_t);
+		bool receiveLoRa();							//Polling receive function
 		
 		//COBS/Serial specific setting
 		uint8_t cobsProtocolId = 255;				//ID assigned to this protocol if enabled, 255 implies it is not
