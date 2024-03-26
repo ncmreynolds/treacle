@@ -1474,10 +1474,12 @@ void treacleClass::unpackIdAndNameResolutionResponsePacket(uint8_t transportId, 
 			if(nodeIndex != maximumNumberOfNodes)
 			{
 				debugPrintln(debugString_received);
+				debugPrint(debugString_treacleSpace);
+				debugPrint("\t");
 				debugPrint(debugString_nodeId);
 				debugPrint(':');
 				debugPrint(receiveBuffer[(uint8_t)headerPosition::payload]);
-				debugPrint("<->\"");
+				debugPrint(" <-> \"");
 				debugPrint(nameReceived);
 				debugPrint('"');
 				bool copyName = false;
@@ -1695,6 +1697,14 @@ bool treacleClass::queueMessage(const unsigned char* data, uint8_t length)
 bool treacleClass::queueMessage(uint8_t* data, uint8_t length)
 {
 	bool nodeReached[numberOfNodes] = {};	//Used to track which nodes _should_ have been reached, in transport priority order and avoid sending using lower priority transports, if possible
+	/*
+	bool nodeUnreachable[numberOfNodes] = {};	//Used to track which nodes _should_ have been reached, in transport priority order and avoid sending using lower priority transports, if possible
+	for(uint8_t nodeIndex = 0; nodeIndex < numberOfNodes; nodeIndex++)
+	{
+		nodeUnreachable = true;
+	}
+	uint8_t numberOfUnreachableNodes = numberOfNodes;
+	*/
 	uint8_t numberOfNodesReached = 0;
 	if(length < maximumPayloadSize)
 	{
@@ -1718,6 +1728,13 @@ bool treacleClass::queueMessage(uint8_t* data, uint8_t length)
 						{
 							nodeReached[nodeIndex] == true;
 							numberOfNodesReached++;
+							/*
+							if(nodeUnreachable == true)
+							{
+								nodeUnreachable = false;	//Mark as not unreachable
+								numberOfUnreachableNodes--;
+							}
+							*/
 						}
 					}
 				}
