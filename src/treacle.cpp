@@ -29,8 +29,46 @@ bool treacleClass::begin(uint8_t maxNodes)
 	{
 		uint8_t localMacAddress[6];
 		WiFi.macAddress(localMacAddress);
-		currentNodeName = new char[9];
-		sprintf_P(currentNodeName, PSTR("node%02X%02X"), localMacAddress[4], localMacAddress[5]);  //Add some hex from the MAC address on the end
+		if(espNowEnabled() && loRaEnabled() && cobsEnabled())
+		{
+			currentNodeName = new char[22];
+			sprintf_P(currentNodeName, PSTR("EspNow_LoRa_COBS_%02X%02X"), localMacAddress[4], localMacAddress[5]);  //Add some hex from the MAC address on the end
+		}
+		else if(espNowEnabled() && loRaEnabled())
+		{
+			currentNodeName = new char[17];
+			sprintf_P(currentNodeName, PSTR("EspNow_LoRa_%02X%02X"), localMacAddress[4], localMacAddress[5]);  //Add some hex from the MAC address on the end
+		}
+		else if(espNowEnabled()&& cobsEnabled())
+		{
+			currentNodeName = new char[17];
+			sprintf_P(currentNodeName, PSTR("EspNow_COBS_%02X%02X"), localMacAddress[4], localMacAddress[5]);  //Add some hex from the MAC address on the end
+		}
+		else if(loRaEnabled() && cobsEnabled())
+		{
+			currentNodeName = new char[15];
+			sprintf_P(currentNodeName, PSTR("LoRa_COBS_%02X%02X"), localMacAddress[4], localMacAddress[5]);  //Add some hex from the MAC address on the end
+		}
+		else if(espNowEnabled())
+		{
+			currentNodeName = new char[12];
+			sprintf_P(currentNodeName, PSTR("EspNow_%02X%02X"), localMacAddress[4], localMacAddress[5]);  //Add some hex from the MAC address on the end
+		}
+		else if(loRaEnabled())
+		{
+			currentNodeName = new char[10];
+			sprintf_P(currentNodeName, PSTR("LoRa_%02X%02X"), localMacAddress[4], localMacAddress[5]);  //Add some hex from the MAC address on the end
+		}
+		else if(cobsEnabled())
+		{
+			currentNodeName = new char[10];
+			sprintf_P(currentNodeName, PSTR("COBS_%02X%02X"), localMacAddress[4], localMacAddress[5]);  //Add some hex from the MAC address on the end
+		}
+		else
+		{
+			currentNodeName = new char[10];
+			sprintf_P(currentNodeName, PSTR("node_%02X%02X"), localMacAddress[4], localMacAddress[5]);  //Add some hex from the MAC address on the end
+		}
 	}
 	debugPrint(debugString_treacleSpace);
 	debugPrint(debugString_node_name);
@@ -39,52 +77,52 @@ bool treacleClass::begin(uint8_t maxNodes)
 	debugPrint(debugString_treacleSpace);
 	debugPrintln(debugString_starting);
 	changeCurrentState(state::starting);
-	if(numberOfActiveProtocols > 0)
+	if(numberOfActiveTransports > 0)
 	{
-		protocol = new protocolData[numberOfActiveProtocols];
+		transport = new transportData[numberOfActiveTransports];
 		
-		//Initialise all the protocols
-		uint8_t numberOfInitialisedProtocols = 0;
-		for(uint8_t index = 0; index < numberOfActiveProtocols; index++)	//Initialise every protocol that is enabled
+		//Initialise all the transports
+		uint8_t numberOfInitialisedTransports = 0;
+		for(uint8_t transportIndex = 0; transportIndex < numberOfActiveTransports; transportIndex++)	//Initialise every transport that is enabled
 		{
-			if(index == espNowProtocolId)
+			if(transportIndex == espNowTransportId)
 			{
-				protocol[index].initialised = initialiseEspNow();
+				transport[transportIndex].initialised = initialiseEspNow();
 			}
-			else if(index == loRaProtocolId)
+			else if(transportIndex == loRaTransportId)
 			{
-				protocol[index].initialised = initialiseLoRa();
+				transport[transportIndex].initialised = initialiseLoRa();
 			}
-			else if(index == cobsProtocolId)
+			else if(transportIndex == cobsTransportId)
 			{
-				protocol[index].initialised = initialiseCobs();
+				transport[transportIndex].initialised = initialiseCobs();
 			}
-			if(protocol[index].initialised == true)
+			if(transport[transportIndex].initialised == true)
 			{
-				numberOfInitialisedProtocols++;
+				numberOfInitialisedTransports++;
 			}
 			if(encryptionKey != nullptr)
 			{
-				protocol[index].encrypted = true;	//Default to encrypted if a key is set
+				transport[transportIndex].encrypted = true;	//Default to encrypted if a key is set
 			}
 		}
 		debugPrint(debugString_treacleSpace);
 		debugPrint(debugString_start);
 		debugPrint(':');
-		if(numberOfInitialisedProtocols == numberOfActiveProtocols)
+		if(numberOfInitialisedTransports == numberOfActiveTransports)
 		{
 			debugPrintln(debugString_OK);
 			debugPrint(debugString_treacleSpace);
-			debugPrint(debugString_ActiveSpaceProtocols);
+			debugPrint(debugString_ActiveSpaceTransports);
 			debugPrint(':');
-			debugPrintln(numberOfInitialisedProtocols);
-			for(uint8_t protocol = 0; protocol < numberOfActiveProtocols; protocol++)
+			debugPrintln(numberOfInitialisedTransports);
+			for(uint8_t transportId = 0; transportId < numberOfActiveTransports; transportId++)
 			{
 				debugPrint(debugString_treacleSpace);
-				debugPrintProtocolName(protocol);
-				debugPrint(debugString_SpaceProtocolID);
+				debugPrintTransportName(transportId);
+				debugPrint(debugString_SpaceTransportID);
 				debugPrint(':');
-				debugPrintln(protocol);
+				debugPrintln(transportId);
 			}
 			changeCurrentState(state::selectingId);
 			return true;
@@ -115,60 +153,60 @@ void treacleClass::disableDebug()
 }
 /*
  *
- *	Protocol abstraction/genericisation helpers
+ *	Transport abstraction/genericisation helpers
  *
  */
 bool treacleClass::packetInQueue()
 {
-	for(uint8_t index = 0; index < numberOfActiveProtocols; index++)
+	for(uint8_t transportIndex = 0; transportIndex < numberOfActiveTransports; transportIndex++)
 	{
-		if(protocol[index].bufferSent == false)			//At least one protocol has not sent the buffer
+		if(transport[transportIndex].bufferSent == false)			//At least one transport has not sent the buffer
 		{
 			return true;
 		}
 	}
 	return false;
 }
-bool treacleClass::packetInQueue(uint8_t protocolId)
+bool treacleClass::packetInQueue(uint8_t transportId)
 {
-	if(protocol[protocolId].bufferSent == false)		//Protocol has not sent the buffer
+	if(transport[transportId].bufferSent == false)		//Transport has not sent the buffer
 	{
 		return true;
 	}
 	return false;
 }
-bool treacleClass::sendBuffer(uint8_t protocolId, uint8_t* buffer, uint8_t packetSize)
+bool treacleClass::sendBuffer(uint8_t transportId, uint8_t* buffer, uint8_t packetSize)
 {
-	if(protocolId == espNowProtocolId)
+	if(transportId == espNowTransportId)
 	{
 		return sendBufferByEspNow(buffer, packetSize);
 	}
-	else if(protocolId == loRaProtocolId)
+	else if(transportId == loRaTransportId)
 	{
 		return sendBufferByLoRa(buffer, packetSize);
 	}
-	else if(protocolId == cobsProtocolId)
+	else if(transportId == cobsTransportId)
 	{
 		return sendBufferByCobs(buffer, packetSize);
 	}
 }
 /*
  *
- *	Generic protocol functions
+ *	Generic transport functions
  *
  */
-void treacleClass::enableEncryption(uint8_t protocolId)				//Enable encryption for a specific protocol
+void treacleClass::enableEncryption(uint8_t transportId)				//Enable encryption for a specific transport
 {
-	if(protocol != nullptr && protocolId != 255)
+	if(transport != nullptr && transportId != 255)
 	{
-		protocol[protocolId].encrypted = true;
+		transport[transportId].encrypted = true;
 	}
 }
-void treacleClass::disableEncryption(uint8_t protocolId)				//Disable encryption for a specific protocol
+void treacleClass::disableEncryption(uint8_t transportId)				//Disable encryption for a specific transport
 {
-	if(protocol != nullptr && protocolId != 255)
+	if(transport != nullptr && transportId != 255)
 	{
-		protocol[protocolId].encrypted = false;
+		transport[transportId].encrypted = false;
 	}
 }
 /*
@@ -181,25 +219,25 @@ void treacleClass::enableEspNow()
 	debugPrint(debugString_treacleSpace);
 	debugPrint(debugString_enablingSpace);
 	debugPrintln(debugString_ESPNow);
-	espNowProtocolId = numberOfActiveProtocols++;
+	espNowTransportId = numberOfActiveTransports++;
 }
 bool treacleClass::espNowEnabled()
 {
-	return espNowProtocolId != 255;	//Not necessarily very useful, but it can be checked
+	return espNowTransportId != 255;	//Not necessarily very useful, but it can be checked
 }
 void treacleClass::enableEspNowEncryption()				//Enable encryption for ESP-Now
 {
-	enableEncryption(espNowProtocolId);
+	enableEncryption(espNowTransportId);
 }
 void treacleClass::disableEspNowEncryption()			//Disable encryption for ESP-Now
 {
-	disableEncryption(espNowProtocolId);
+	disableEncryption(espNowTransportId);
 }
 bool treacleClass::espNowInitialised()
 {
-	if(espNowProtocolId != 255)
+	if(espNowTransportId != 255)
 	{
-		return protocol[espNowProtocolId].initialised;
+		return transport[espNowTransportId].initialised;
 	}
 	return false;
 }
@@ -335,20 +373,20 @@ bool treacleClass::initialiseEspNow()
 						{
 							if(treacle.receiveBufferSize == 0 && receivedMessageLength < treacle.maximumBufferSize)	//Check the receive buffer is empty first
 							{
-								treacle.protocol[treacle.espNowProtocolId].rxPackets++;						//Count the packet as received
+								treacle.transport[treacle.espNowTransportId].rxPackets++;						//Count the packet as received
 								if(receivedMessage[(uint8_t)treacle.headerPosition::recipient] == (uint8_t)treacle.nodeId::allNodes ||
 									receivedMessage[(uint8_t)treacle.headerPosition::recipient] == treacle.currentNodeId)	//Packet is meaningful to this node
 								{
 									memcpy(&treacle.receiveBuffer,receivedMessage,receivedMessageLength);	//Copy the ESP-Now payload
 									treacle.receiveBufferSize = receivedMessageLength;						//Record the amount of payload
 									treacle.receiveBufferCrcChecked = false;								//Mark the payload as unchecked
-									treacle.receiveProtocol = treacle.espNowProtocolId;						//Record that it was received by ESP-Now
-									treacle.protocol[treacle.espNowProtocolId].rxPacketsProcessed++;		//Count the packet as processed
+									treacle.receiveTransport = treacle.espNowTransportId;						//Record that it was received by ESP-Now
+									treacle.transport[treacle.espNowTransportId].rxPacketsProcessed++;		//Count the packet as processed
 								}
 							}
 							else
 							{
-								treacle.protocol[treacle.espNowProtocolId].rxPacketsDropped++;				//Count the drop
+								treacle.transport[treacle.espNowTransportId].rxPacketsDropped++;				//Count the drop
 							}
 						}
 					}
@@ -359,22 +397,22 @@ bool treacleClass::initialiseEspNow()
 						{
 							if(status == ESP_OK)
 							{
-								if(treacle.protocol[treacle.espNowProtocolId].txStartTime != 0)				//Check the initial send time was recorded
+								if(treacle.transport[treacle.espNowTransportId].txStartTime != 0)				//Check the initial send time was recorded
 								{
-									treacle.protocol[treacle.espNowProtocolId].txTime += micros()			//Add to the total transmit time
-										- treacle.protocol[treacle.espNowProtocolId].txStartTime;
-									treacle.protocol[treacle.espNowProtocolId].txStartTime = 0;				//Clear the initial send time
+									treacle.transport[treacle.espNowTransportId].txTime += micros()			//Add to the total transmit time
+										- treacle.transport[treacle.espNowTransportId].txStartTime;
+									treacle.transport[treacle.espNowTransportId].txStartTime = 0;				//Clear the initial send time
 								}
-								treacle.protocol[treacle.espNowProtocolId].txPackets++;						//Count the packet
+								treacle.transport[treacle.espNowTransportId].txPackets++;						//Count the packet
 							}
 							else
 							{
-								treacle.protocol[treacle.espNowProtocolId].txPacketsDropped++;				//Count the drop
+								treacle.transport[treacle.espNowTransportId].txPacketsDropped++;				//Count the drop
 							}
 						}
 					) == ESP_OK)
 					{
-						protocol[espNowProtocolId].initialised = true;
+						transport[espNowTransportId].initialised = true;
 						debugPrintln(debugString_OK);
 						return true;
 					}
@@ -382,7 +420,7 @@ bool treacleClass::initialiseEspNow()
 			}
 		}
 	}
-	protocol[espNowProtocolId].initialised = false;
+	transport[espNowTransportId].initialised = false;
 	debugPrintln(debugString_failed);
 	return false;
 }
@@ -435,7 +473,7 @@ bool treacleClass::deleteEspNowPeer(uint8_t* macaddress)
 
 bool treacleClass::sendBufferByEspNow(uint8_t* buffer, uint8_t packetSize)
 {
-	protocol[espNowProtocolId].txStartTime = micros();
+	transport[espNowTransportId].txStartTime = micros();
 	esp_err_t espNowSendResult = esp_now_send(broadcastMacAddress, buffer, (size_t)packetSize);
 	if(espNowSendResult == ESP_OK)
 	{
@@ -443,7 +481,7 @@ bool treacleClass::sendBufferByEspNow(uint8_t* buffer, uint8_t packetSize)
 	}
 	else
 	{
-		protocol[espNowProtocolId].txPacketsDropped++;		//Record the drop
+		transport[espNowTransportId].txPacketsDropped++;		//Record the drop
 		if(WiFi.channel() != currentEspNowChannel)			//Channel has changed, alter the peer address
 		{
 			if(deleteEspNowPeer(broadcastMacAddress))		//This could perhaps be changed to modify the existing peer but this should be infrequent
@@ -452,7 +490,7 @@ bool treacleClass::sendBufferByEspNow(uint8_t* buffer, uint8_t packetSize)
 			}
 		}
 	}
-	protocol[espNowProtocolId].txStartTime = 0;
+	transport[espNowTransportId].txStartTime = 0;
 	return false;
 }
 /*
@@ -475,11 +513,11 @@ void treacleClass::enableLoRa()
 	debugPrint(debugString_treacleSpace);
 	debugPrint(debugString_enablingSpace);
 	debugPrintln(debugString_LoRa);
-	loRaProtocolId = numberOfActiveProtocols++;
+	loRaTransportId = numberOfActiveTransports++;
 }
 bool treacleClass::loRaEnabled()
 {
-	return loRaProtocolId != 255;	//Not necessarily very useful, but it can be checked
+	return loRaTransportId != 255;	//Not necessarily very useful, but it can be checked
 }
 bool treacleClass::initialiseLoRa()
 {
@@ -504,18 +542,18 @@ bool treacleClass::initialiseLoRa()
 		LoRa.enableCrc();										//Enable CRC check
 		LoRa.receive();											//Start LoRa reception
 		debugPrintln(debugString_OK);
-		protocol[loRaProtocolId].initialised = true;			//Mark as initialised
+		transport[loRaTransportId].initialised = true;			//Mark as initialised
 		if(loRaIrqPin != -1)									//Callbacks on IRQ pin
 		{
 			LoRa.onTxDone(										//Send callback function
 				[]() {
-					if(treacle.protocol[treacle.loRaProtocolId].txStartTime != 0)			//Check the initial send time was recorded
+					if(treacle.transport[treacle.loRaTransportId].txStartTime != 0)			//Check the initial send time was recorded
 					{
-						treacle.protocol[treacle.loRaProtocolId].txTime += micros()			//Add to the total transmit time
-							- treacle.protocol[treacle.loRaProtocolId].txStartTime;
-						treacle.protocol[treacle.loRaProtocolId].txStartTime = 0;			//Clear the initial send time
+						treacle.transport[treacle.loRaTransportId].txTime += micros()			//Add to the total transmit time
+							- treacle.transport[treacle.loRaTransportId].txStartTime;
+						treacle.transport[treacle.loRaTransportId].txStartTime = 0;			//Clear the initial send time
 					}
-					treacle.protocol[treacle.loRaProtocolId].txPackets++;					//Count the packet
+					treacle.transport[treacle.loRaTransportId].txPackets++;					//Count the packet
 				}
 			);
 		}
@@ -523,15 +561,15 @@ bool treacleClass::initialiseLoRa()
 	else
 	{
 		debugPrintln(debugString_failed);
-		protocol[loRaProtocolId].initialised = false;			//Mark as not initialised
+		transport[loRaTransportId].initialised = false;			//Mark as not initialised
 	}
-	return protocol[loRaProtocolId].initialised;
+	return transport[loRaTransportId].initialised;
 }
 bool treacleClass::loRaInitialised()
 {
-	if(loRaProtocolId != 255)
+	if(loRaTransportId != 255)
 	{
-		return protocol[loRaProtocolId].initialised;
+		return transport[loRaTransportId].initialised;
 	}
 	return false;
 }
@@ -542,26 +580,26 @@ bool treacleClass::sendBufferByLoRa(uint8_t* buffer, uint8_t packetSize)
 		LoRa.write(buffer, packetSize);
 		if(loRaIrqPin == -1)															//No LoRa IRQ, do this synchronously
 		{
-			protocol[loRaProtocolId].txStartTime = micros();
+			transport[loRaTransportId].txStartTime = micros();
 			if(LoRa.endPacket())
 			{
-				protocol[loRaProtocolId].txTime += micros()			//Add to the total transmit time
-					- protocol[loRaProtocolId].txStartTime;
-				protocol[loRaProtocolId].txStartTime = 0;			//Clear the initial send time
-				protocol[loRaProtocolId].txPackets++;				//Count the packet
+				transport[loRaTransportId].txTime += micros()			//Add to the total transmit time
+					- transport[loRaTransportId].txStartTime;
+				transport[loRaTransportId].txStartTime = 0;			//Clear the initial send time
+				transport[loRaTransportId].txPackets++;				//Count the packet
 				return true;
 			}
 		}
 		else
 		{
-			protocol[loRaProtocolId].txStartTime = micros();
+			transport[loRaTransportId].txStartTime = micros();
 			if(LoRa.endPacket(true))
 			{
 				return true;
 			}
 		}
 	}
-	protocol[loRaProtocolId].txStartTime = 0;
+	transport[loRaTransportId].txStartTime = 0;
 	return false;
 }
 bool treacleClass::receiveLoRa()
@@ -571,21 +609,21 @@ bool treacleClass::receiveLoRa()
 	{
 		if(receiveBufferSize == 0 && receivedMessageLength < treacle.maximumBufferSize)
 		{
-			protocol[loRaProtocolId].rxPackets++;						//Count the packet as received
+			transport[loRaTransportId].rxPackets++;						//Count the packet as received
 			if(LoRa.peek() == (uint8_t)nodeId::allNodes ||
 				LoRa.peek() == currentNodeId)							//Packet is meaningful to this node
 			{
 				LoRa.readBytes(receiveBuffer, receivedMessageLength);	//Copy the LoRa payload
 				receiveBufferSize = receivedMessageLength;				//Record the amount of payload
 				receiveBufferCrcChecked = false;						//Mark the payload as unchecked
-				receiveProtocol = loRaProtocolId;						//Record that it was received by ESP-Now
-				protocol[loRaProtocolId].rxPacketsProcessed++;			//Count the packet as processed
+				receiveTransport = loRaTransportId;						//Record that it was received by ESP-Now
+				transport[loRaTransportId].rxPacketsProcessed++;			//Count the packet as processed
 				return true;
 			}
 		}
 		else
 		{
-			protocol[loRaProtocolId].rxPacketsDropped++;				//Count the drop
+			transport[loRaTransportId].rxPacketsDropped++;				//Count the drop
 		}
 		while(LoRa.available())											//Drop the packet
 		{
@@ -604,17 +642,17 @@ void treacleClass::enableCobs()
 	debugPrint(debugString_treacleSpace);
 	debugPrint(debugString_enablingSpace);
 	debugPrint(debugString_COBS);
-	cobsProtocolId = numberOfActiveProtocols++;
+	cobsTransportId = numberOfActiveTransports++;
 }
 bool treacleClass::cobsEnabled()
 {
-	return cobsProtocolId != 255;	//Not necessarily very useful, but it can be checked
+	return cobsTransportId != 255;	//Not necessarily very useful, but it can be checked
 }
 bool treacleClass::cobsInitialised()
 {
-	if(cobsProtocolId != 255)
+	if(cobsTransportId != 255)
 	{
-		return protocol[cobsProtocolId].initialised;
+		return transport[cobsTransportId].initialised;
 	}
 	return false;
 }
@@ -661,13 +699,13 @@ bool treacleClass::selectNodeId()
  *	General packet handling
  *
  */
-bool treacleClass::processPacketBeforeTransmission(uint8_t protocolId)
+bool treacleClass::processPacketBeforeTransmission(uint8_t transportId)
 {
-	if(appendChecksumToPacket(protocol[protocolId].transmitBuffer, protocol[protocolId].transmitPacketSize))		//Append checksum after making the packet, but do not increment the packetLength field
+	if(appendChecksumToPacket(transport[transportId].transmitBuffer, transport[transportId].transmitPacketSize))		//Append checksum after making the packet, but do not increment the packetLength field
 	{
-		if(protocol[protocolId].encrypted == true)
+		if(transport[transportId].encrypted == true)
 		{
-			return encryptPayload(protocol[protocolId].transmitBuffer, protocol[protocolId].transmitPacketSize);	//Encrypt the payload but not the header
+			return encryptPayload(transport[transportId].transmitBuffer, transport[transportId].transmitPacketSize);	//Encrypt the payload but not the header
 		}
 		return true;
 	}
@@ -709,9 +747,9 @@ bool treacleClass::encryptPayload(uint8_t* buffer, uint8_t& packetSize)	//Pad th
 		debugPrint(' ');
 	}
 	#if defined(TREACLE_OBFUSCATE_ONLY)
-		for(uint8_t index = (uint8_t)headerPosition::blockIndex; index < packetSize; index++)
+		for(uint8_t bufferIndex = (uint8_t)headerPosition::blockIndex; bufferIndex < packetSize; bufferIndex++)
 		{
-			buffer[index] = buffer[index] ^ index;	//This is obfuscation only, for testing.
+			buffer[bufferIndex] = buffer[bufferIndex] ^ bufferIndex;	//This is obfuscation only, for testing.
 		}
 	#else
 		uint8_t initialisationVector[16];												//Allocate an initialisation vector
@@ -751,9 +789,9 @@ bool treacleClass::decryptPayload(uint8_t* buffer, uint8_t& packetSize)	//Decryp
 		debugPrint(debugString_decrypted);
 		debugPrint(' ');
 		#if defined(TREACLE_OBFUSCATE_ONLY)
-			for(uint8_t index = (uint8_t)headerPosition::blockIndex; index < packetSize; index++)
+			for(uint8_t bufferIndex = (uint8_t)headerPosition::blockIndex; bufferIndex < packetSize; bufferIndex++)
 			{
-				buffer[index] = buffer[index] ^ index;	//This is obfuscation only, for testing.
+				buffer[bufferIndex] = buffer[bufferIndex] ^ bufferIndex;	//This is obfuscation only, for testing.
 			}
 		#else
 			uint8_t initialisationVector[16];												//Allocate an initialisation vector
@@ -836,118 +874,126 @@ void treacleClass::changeCurrentState(state newState)
  *	Tick timers
  *
  */
-uint16_t treacleClass::minimumTickTime(uint8_t protocolId)
+uint16_t treacleClass::minimumTickTime(uint8_t transportId)
 {
-	if(protocolId == espNowProtocolId) return	100;
-	else if(protocolId == loRaProtocolId) return 500;
-	else if(protocolId == cobsProtocolId) return 250;
+	if(transportId == espNowTransportId) return	100;
+	else if(transportId == loRaTransportId) return 500;
+	else if(transportId == cobsTransportId) return 250;
 	else return 1000;
 }
 void treacleClass::setTickTime()
 {
 	if(currentState == state::uninitialised || currentState == state::starting) return;
-	for(uint8_t index = 0; index < numberOfActiveProtocols; index++)
+	for(uint8_t transportIndex = 0; transportIndex < numberOfActiveTransports; transportIndex++)
 	{
 		if(currentState == state::selectingId)
 		{
-			if(index == espNowProtocolId) protocol[index].nextTick =	1E3 -	tickRandomisation(index);
-			else if(index == loRaProtocolId) protocol[index].nextTick =	45E3 -	tickRandomisation(index);
-			else if(index == cobsProtocolId) protocol[index].nextTick =	10E3 -	tickRandomisation(index);
+			if(transportIndex == espNowTransportId) transport[transportIndex].nextTick =	1E3 -	tickRandomisation(transportIndex);
+			else if(transportIndex == loRaTransportId) transport[transportIndex].nextTick =	45E3 -	tickRandomisation(transportIndex);
+			else if(transportIndex == cobsTransportId) transport[transportIndex].nextTick =	10E3 -	tickRandomisation(transportIndex);
 		}
 		else if(currentState == state::selectedId)
 		{
-			if(index == espNowProtocolId) protocol[index].nextTick = 	1E3 -	tickRandomisation(index);
-			else if(index == loRaProtocolId) protocol[index].nextTick =	45E3 -	tickRandomisation(index);
-			else if(index == cobsProtocolId) protocol[index].nextTick =	15E3 -	tickRandomisation(index);
+			if(transportIndex == espNowTransportId) transport[transportIndex].nextTick = 	1E3 -	tickRandomisation(transportIndex);
+			else if(transportIndex == loRaTransportId) transport[transportIndex].nextTick =	45E3 -	tickRandomisation(transportIndex);
+			else if(transportIndex == cobsTransportId) transport[transportIndex].nextTick =	15E3 -	tickRandomisation(transportIndex);
 		}
 		else if(currentState == state::online)
 		{
-			if(index == espNowProtocolId) protocol[index].nextTick =	10E3 -	tickRandomisation(index);
-			else if(index == loRaProtocolId) protocol[index].nextTick =	45E3 -	tickRandomisation(index);
-			else if(index == cobsProtocolId) protocol[index].nextTick =	100E3 -	tickRandomisation(index);
+			if(transportIndex == espNowTransportId) transport[transportIndex].nextTick =	10E3 -	tickRandomisation(transportIndex);
+			else if(transportIndex == loRaTransportId) transport[transportIndex].nextTick =	45E3 -	tickRandomisation(transportIndex);
+			else if(transportIndex == cobsTransportId) transport[transportIndex].nextTick =	100E3 -	tickRandomisation(transportIndex);
 		}
 		else if(currentState == state::offline)
 		{
-			if(index == espNowProtocolId) protocol[index].nextTick =	5E3 -	tickRandomisation(index);
-			else if(index == loRaProtocolId) protocol[index].nextTick =	45E3 -	tickRandomisation(index);
-			else if(index == cobsProtocolId) protocol[index].nextTick =	15E3 -	tickRandomisation(index);
+			if(transportIndex == espNowTransportId) transport[transportIndex].nextTick =	5E3 -	tickRandomisation(transportIndex);
+			else if(transportIndex == loRaTransportId) transport[transportIndex].nextTick =	45E3 -	tickRandomisation(transportIndex);
+			else if(transportIndex == cobsTransportId) transport[transportIndex].nextTick =	15E3 -	tickRandomisation(transportIndex);
 		}
 		else if(currentState == state::stopped)
 		{
-			protocol[index].nextTick =									0;		//Never send
+			transport[transportIndex].nextTick =									0;		//Never send
 		}
 		else
 		{
-			if(index == espNowProtocolId) protocol[index].nextTick =	maximumTickTime;
-			else if(index == loRaProtocolId) protocol[index].nextTick =	maximumTickTime;
-			else if(index == cobsProtocolId) protocol[index].nextTick =	maximumTickTime;
+			if(transportIndex == espNowTransportId) transport[transportIndex].nextTick =	maximumTickTime;
+			else if(transportIndex == loRaTransportId) transport[transportIndex].nextTick =	maximumTickTime;
+			else if(transportIndex == cobsTransportId) transport[transportIndex].nextTick =	maximumTickTime;
 		}
 	}
 }
-uint16_t treacleClass::tickRandomisation(uint8_t protocolId)
+uint16_t treacleClass::tickRandomisation(uint8_t transportId)
 {
-	return random(minimumTickTime(protocolId), minimumTickTime(protocolId)*2);
+	return random(minimumTickTime(transportId), minimumTickTime(transportId)*2);
 }
 void treacleClass::bringForwardNextTick()
 {
 	debugPrint(debugString_treacleSpace);
 	debugPrint(debugString_expediting_);
 	debugPrintln(debugString_response);
-	for(uint8_t index = 0; index < numberOfActiveProtocols; index++)
+	for(uint8_t transportIndex = 0; transportIndex < numberOfActiveTransports; transportIndex++)
 	{
-		if(protocol[index].nextTick != 0)
+		if(transport[transportIndex].nextTick != 0)
 		{
-			protocol[index].lastTick = millis() - (protocol[index].nextTick + tickRandomisation(index));
+			transport[transportIndex].lastTick = millis() - (transport[transportIndex].nextTick + tickRandomisation(transportIndex));
 		}
 	}
 }
 bool treacleClass::sendPacketOnTick()
 {
-	for(uint8_t protocolIndex = 0; protocolIndex < numberOfActiveProtocols; protocolIndex++)
+	/*
+	if(millis() - lastDutyCycleCheck > dutyCycleCheckInterval)
 	{
-		if(protocol[protocolIndex].nextTick != 0 && millis() - protocol[protocolIndex].lastTick > protocol[protocolIndex].nextTick)	//nextTick = 0 implies never
+		lastDutyCycleCheck = millis();
+		calculateDutyCycle();
+	}
+	*/
+	for(uint8_t transportId = 0; transportId < numberOfActiveTransports; transportId++)
+	{
+		if(transport[transportId].nextTick != 0 && millis() - transport[transportId].lastTick > transport[transportId].nextTick)	//nextTick = 0 implies never
 		{
-			protocol[protocolIndex].lastTick = millis();									//Update the last tick time
+			transport[transportId].lastTick = millis();									//Update the last tick time
+			calculateDutyCycle(transportId);
 			debugPrint(debugString_treacleSpace);
-			debugPrintProtocolName(protocolIndex);
+			debugPrintTransportName(transportId);
 			debugPrint(' ');
-			if(protocol[protocolIndex].calculatedDutyCycle < protocol[protocolIndex].maximumDutyCycle)
+			if(transport[transportId].calculatedDutyCycle < transport[transportId].maximumDutyCycle)
 			{
-				if(packetInQueue(protocolIndex) == false)									//Nothing ready to send from the application for _this_ protocol
+				if(packetInQueue(transportId) == false)									//Nothing ready to send from the application for _this_ transport
 				{
 					if(currentState == state::selectingId)							//Speed up ID selection by asking existing node IDs
 					{
-						buildIdResolutionRequestPacket(protocolIndex, currentNodeName);		//Ask about this node with a name->Id request
+						buildIdResolutionRequestPacket(transportId, currentNodeName);		//Ask about this node with a name->Id request
 						debugPrint(debugString_idResolutionRequest);
 					}
 					else
 					{
-						if(packetInQueue() == false && protocol[protocolIndex].payloadNumber%4 == 0)						//If nothing else is queued to transmit over any protocol, 25% of packets can be name requests to backfill names
+						if(packetInQueue() == false && transport[transportId].payloadNumber%4 == 0)						//If nothing else is queued to transmit over any transport, 25% of packets can be name requests to backfill names
 						{
 							for(uint8_t nodeIndex = 0; nodeIndex < numberOfNodes; nodeIndex++)
 							{
 								if(node[nodeIndex].name == nullptr && packetInQueue() == false)		//This node has no name yet
 								{
-									buildNameResolutionRequestPacket(protocolIndex, node[nodeIndex].id);	//Ask for the node's name with an id->name request
+									buildNameResolutionRequestPacket(transportId, node[nodeIndex].id);	//Ask for the node's name with an id->name request
 									debugPrint(debugString_nameResolutionRequest);
 								}
 							}
 						}
-						if(packetInQueue(protocolIndex) == false)				//Nothing else is queued to transmit over _this_ protocol, keepalives can go over a higher priority protocol with something in a lower one queued
+						if(packetInQueue(transportId) == false)				//Nothing else is queued to transmit over _this_ transport, keepalives can go over a higher priority transport with something in a lower one queued
 						{
-							buildKeepalivePacket(protocolIndex);				//Create an empty tick as a keepalive and announcement of all known nodeIds
+							buildKeepalivePacket(transportId);				//Create an empty tick as a keepalive and announcement of all known nodeIds
 							debugPrint(debugString_keepalive);
 						}
 					}
 				}
-				else	//There is already data which may or many not already have been sent by other protocols
+				else	//There is already data which may or many not already have been sent by other transports
 				{
-					debugPrintPayloadTypeDescription(protocol[protocolIndex].transmitBuffer[(uint8_t)headerPosition::payloadType]);
+					debugPrintPayloadTypeDescription(transport[transportId].transmitBuffer[(uint8_t)headerPosition::payloadType]);
 				}
 				debugPrint(':');
-				if(sendBuffer(protocolIndex, protocol[protocolIndex].transmitBuffer, protocol[protocolIndex].transmitPacketSize))
+				if(sendBuffer(transportId, transport[transportId].transmitBuffer, transport[transportId].transmitPacketSize))
 				{
-					debugPrint(protocol[protocolIndex].transmitPacketSize);
+					debugPrint(transport[transportId].transmitPacketSize);
 					debugPrint(' ');
 					debugPrint(debugString_bytes);
 					debugPrint(' ');
@@ -956,19 +1002,19 @@ bool treacleClass::sendPacketOnTick()
 					debugPrint(debugString_toSpace);
 					debugPrint(debugString_nodeId);
 					debugPrint(':');
-					if(protocol[protocolIndex].transmitBuffer[0] == (uint8_t)nodeId::allNodes)
+					if(transport[transportId].transmitBuffer[0] == (uint8_t)nodeId::allNodes)
 					{
 						debugPrintln(debugString_all);
 					}
-					else if(protocol[protocolIndex].transmitBuffer[0] == (uint8_t)nodeId::unknownNode)
+					else if(transport[transportId].transmitBuffer[0] == (uint8_t)nodeId::unknownNode)
 					{
 						debugPrintln(debugString_unknown);
 					}
 					else
 					{
-						debugPrintln(protocol[protocolIndex].transmitBuffer[0]);
+						debugPrintln(transport[transportId].transmitBuffer[0]);
 					}
-					protocol[protocolIndex].bufferSent = true;
+					transport[transportId].bufferSent = true;
 					return true;
 				}
 				else
@@ -981,7 +1027,7 @@ bool treacleClass::sendPacketOnTick()
 			{
 				debugPrint(debugString_duty_cycle_exceeded);
 				debugPrint(':');
-				debugPrint(protocol[protocolIndex].calculatedDutyCycle);
+				debugPrint(transport[transportId].calculatedDutyCycle);
 				debugPrintln('%');
 			}
 		}
@@ -992,30 +1038,32 @@ void treacleClass::timeOutTicks()
 {
 	uint16_t totalTxReliability = 0x0000;
 	uint16_t totalRxReliability = 0x0000;
-	for(uint8_t protocolId = 0; protocolId < numberOfActiveProtocols; protocolId++)
+	for(uint8_t transportId = 0; transportId < numberOfActiveTransports; transportId++)
 	{
-		for(uint8_t index = 0; index < numberOfNodes; index++)
+		for(uint8_t nodeIndex = 0; nodeIndex < numberOfNodes; nodeIndex++)
 		{
-			if(millis() - node[index].lastTick[protocolId] > node[index].nextTick[protocolId] + minimumTickTime(protocolId))	//Missed the next window
+			if(millis() - node[nodeIndex].lastTick[transportId] > node[nodeIndex].nextTick[transportId] + minimumTickTime(transportId)		//Missed the next window
+				&& node[nodeIndex].rxReliability[transportId] > 0																			//Actually has some reliability to begin with
+				)
 			{
-				node[index].rxReliability[protocolId] = node[index].rxReliability[protocolId] >> 1;	//Reduce rxReliability
-				node[index].txReliability[protocolId] = node[index].txReliability[protocolId] >> 1;	//As we've not heard anything to the contrary also reduce txReliability
-				node[index].lastTick[protocolId] = millis();										//Update last tick timer, even though one was missed
+				node[nodeIndex].rxReliability[transportId] = node[nodeIndex].rxReliability[transportId] >> 1;	//Reduce rxReliability
+				node[nodeIndex].txReliability[transportId] = node[nodeIndex].txReliability[transportId] >> 1;	//As we've not heard anything to the contrary also reduce txReliability
+				node[nodeIndex].lastTick[transportId] = millis();										//Update last tick timer, even though one was missed
 				debugPrint(debugString_treacleSpace);
-				debugPrintProtocolName(protocolId);
+				debugPrintTransportName(transportId);
 				debugPrint(' ');
 				debugPrint(debugString_nodeId);
 				debugPrint(':');
-				debugPrint(node[index].id);
+				debugPrint(node[nodeIndex].id);
 				debugPrint(' ');
 				debugPrint(debugString_dropped);
 				debugPrint(' ');
 				debugPrint(debugString_rxReliability);
 				debugPrint(':');
-				debugPrintln(node[index].rxReliability[protocolId]);
+				debugPrintln(node[nodeIndex].rxReliability[transportId]);
 			}
-			totalTxReliability = totalTxReliability | node[index].txReliability[protocolId];		//OR all the bits of transmit reliability we have
-			totalRxReliability = totalRxReliability | node[index].rxReliability[protocolId];		//OR all the bits of receive reliability we have
+			totalTxReliability = totalTxReliability | node[nodeIndex].txReliability[transportId];		//OR all the bits of transmit reliability we have
+			totalRxReliability = totalRxReliability | node[nodeIndex].rxReliability[transportId];		//OR all the bits of receive reliability we have
 		}
 	}
 	if((totalRxReliability == 0x0000 || totalTxReliability == 0x0000) && currentState == state::online)
@@ -1033,89 +1081,89 @@ void treacleClass::timeOutTicks()
  *	Packet packing
  *
  */
-void treacleClass::buildPacketHeader(uint8_t protocolId, uint8_t recipient, payloadType type)
+void treacleClass::buildPacketHeader(uint8_t transportId, uint8_t recipient, payloadType type)
 {
-	setTickTime();																								//States and protocols all have their own tick times
+	setTickTime();																								//States and transports all have their own tick times
 	if(recipient == (uint8_t)nodeId::unknownNode)
 	{
 		bringForwardNextTick();																					//Bring forward the next tick ASAP for any starting nodes
 	}
-	protocol[protocolId].transmitBuffer[(uint8_t)headerPosition::recipient] = recipient;						//Add the recipient Id
-	protocol[protocolId].transmitBuffer[(uint8_t)headerPosition::sender] = currentNodeId;						//Add the current nodeId
-	protocol[protocolId].transmitBuffer[(uint8_t)headerPosition::payloadType] = (uint8_t)type;					//Payload type
-	protocol[protocolId].transmitBuffer[(uint8_t)headerPosition::payloadNumber] = protocol[protocolId].payloadNumber++;				//Payload number, which post-increments
-	protocol[protocolId].transmitBuffer[(uint8_t)headerPosition::packetLength] = 0;								//Payload length - starts at 0 and gets updated
-	protocol[protocolId].transmitBuffer[(uint8_t)headerPosition::blockIndex] = 0;								//Large payload start bits 16-23
-	protocol[protocolId].transmitBuffer[(uint8_t)headerPosition::blockIndex+1] = 0;								//Large payload start bits 8-15
-	protocol[protocolId].transmitBuffer[(uint8_t)headerPosition::blockIndex+2] = 0;								//Large payload start bits 0-7
-	protocol[protocolId].transmitBuffer[(uint8_t)headerPosition::nextTick] = (protocol[protocolId].nextTick & 0xff00) >> 8;	//nextTick bits 8-15
-	protocol[protocolId].transmitBuffer[(uint8_t)headerPosition::nextTick+1] = (protocol[protocolId].nextTick & 0x00ff);	//nextTick bits 0-7
-	protocol[protocolId].transmitPacketSize = (uint8_t)headerPosition::payload;									//Set the size to just the header
-	protocol[protocolId].bufferSent = false;																	//Mark as unsent for this protocol
+	transport[transportId].transmitBuffer[(uint8_t)headerPosition::recipient] = recipient;						//Add the recipient Id
+	transport[transportId].transmitBuffer[(uint8_t)headerPosition::sender] = currentNodeId;						//Add the current nodeId
+	transport[transportId].transmitBuffer[(uint8_t)headerPosition::payloadType] = (uint8_t)type;					//Payload type
+	transport[transportId].transmitBuffer[(uint8_t)headerPosition::payloadNumber] = transport[transportId].payloadNumber++;				//Payload number, which post-increments
+	transport[transportId].transmitBuffer[(uint8_t)headerPosition::packetLength] = 0;								//Payload length - starts at 0 and gets updated
+	transport[transportId].transmitBuffer[(uint8_t)headerPosition::blockIndex] = 0;								//Large payload start bits 16-23
+	transport[transportId].transmitBuffer[(uint8_t)headerPosition::blockIndex+1] = 0;								//Large payload start bits 8-15
+	transport[transportId].transmitBuffer[(uint8_t)headerPosition::blockIndex+2] = 0;								//Large payload start bits 0-7
+	transport[transportId].transmitBuffer[(uint8_t)headerPosition::nextTick] = (transport[transportId].nextTick & 0xff00) >> 8;	//nextTick bits 8-15
+	transport[transportId].transmitBuffer[(uint8_t)headerPosition::nextTick+1] = (transport[transportId].nextTick & 0x00ff);	//nextTick bits 0-7
+	transport[transportId].transmitPacketSize = (uint8_t)headerPosition::payload;									//Set the size to just the header
+	transport[transportId].bufferSent = false;																	//Mark as unsent for this transport
 	/*
-	for(uint8_t index = 0; index < numberOfActiveProtocols; index++)
+	for(uint8_t transportIndex = 0; transportIndex < numberOfActiveTransports; transportIndex++)
 	{
-		protocol[index].bufferSent = false;													//Mark as unsent for each protocol
+		transport[transportIndex].bufferSent = false;													//Mark as unsent for each transport
 	}
 	*/
 }
-void treacleClass::buildKeepalivePacket(uint8_t protocolId)
+void treacleClass::buildKeepalivePacket(uint8_t transportId)
 {
-	buildPacketHeader(protocolId, (uint8_t)nodeId::allNodes, payloadType::keepalive);						//Set payloadType
-	for(uint8_t index = 0; index < numberOfNodes; index++)									//Add all nodes with a known name
+	buildPacketHeader(transportId, (uint8_t)nodeId::allNodes, payloadType::keepalive);						//Set payloadType
+	for(uint8_t nodeIndex = 0; nodeIndex < numberOfNodes; nodeIndex++)									//Add all nodes with a known name
 	{
-		if(node[index].name != nullptr && node[index].rxReliability > 0)					//Include nodes with names that have non-zero receive history
+		if(node[nodeIndex].name != nullptr && node[nodeIndex].rxReliability > 0)					//Include nodes with names that have non-zero receive history
 		{
-			protocol[protocolId].transmitBuffer[protocol[protocolId].transmitPacketSize++] = node[index].id;							//Include node ID
-			protocol[protocolId].transmitBuffer[protocol[protocolId].transmitPacketSize++] =											//Include node RX reliability MSB
-				(uint8_t)((node[index].rxReliability[protocolId]&0xff00)>>8);
-			protocol[protocolId].transmitBuffer[protocol[protocolId].transmitPacketSize++] =											//Include node RX reliability LSB
-				(uint8_t)(node[index].rxReliability[protocolId]&0x00ff);
+			transport[transportId].transmitBuffer[transport[transportId].transmitPacketSize++] = node[nodeIndex].id;							//Include node ID
+			transport[transportId].transmitBuffer[transport[transportId].transmitPacketSize++] =											//Include node RX reliability MSB
+				(uint8_t)((node[nodeIndex].rxReliability[transportId]&0xff00)>>8);
+			transport[transportId].transmitBuffer[transport[transportId].transmitPacketSize++] =											//Include node RX reliability LSB
+				(uint8_t)(node[nodeIndex].rxReliability[transportId]&0x00ff);
 			
 		}
 	}
-	protocol[protocolId].transmitBuffer[(uint8_t)headerPosition::packetLength] = protocol[protocolId].transmitPacketSize;				//Update packetLength field
-	processPacketBeforeTransmission(protocolId);																							//Do CRC and encryption if needed
+	transport[transportId].transmitBuffer[(uint8_t)headerPosition::packetLength] = transport[transportId].transmitPacketSize;				//Update packetLength field
+	processPacketBeforeTransmission(transportId);																							//Do CRC and encryption if needed
 }
-void treacleClass::buildIdResolutionRequestPacket(uint8_t protocolId, char* name)				//Ask for a ID from a name
+void treacleClass::buildIdResolutionRequestPacket(uint8_t transportId, char* name)				//Ask for a ID from a name
 {
-	buildPacketHeader(protocolId, (uint8_t)nodeId::allNodes, payloadType::idResolutionRequest);			//Set payloadType
-	protocol[protocolId].transmitBuffer[protocol[protocolId].transmitPacketSize++] = strlen(name);
-	memcpy(&protocol[protocolId].transmitBuffer[protocol[protocolId].transmitPacketSize], name, strlen(name));
-	protocol[protocolId].transmitPacketSize += strlen(name);
-	protocol[protocolId].transmitBuffer[(uint8_t)headerPosition::packetLength] = protocol[protocolId].transmitPacketSize;						//Update packetLength field
-	processPacketBeforeTransmission(protocolId);																								//Do CRC and encryption if needed
+	buildPacketHeader(transportId, (uint8_t)nodeId::allNodes, payloadType::idResolutionRequest);			//Set payloadType
+	transport[transportId].transmitBuffer[transport[transportId].transmitPacketSize++] = strlen(name);
+	memcpy(&transport[transportId].transmitBuffer[transport[transportId].transmitPacketSize], name, strlen(name));
+	transport[transportId].transmitPacketSize += strlen(name);
+	transport[transportId].transmitBuffer[(uint8_t)headerPosition::packetLength] = transport[transportId].transmitPacketSize;						//Update packetLength field
+	processPacketBeforeTransmission(transportId);																								//Do CRC and encryption if needed
 }
-void treacleClass::buildNameResolutionRequestPacket(uint8_t protocolId, uint8_t id)			//Ask for a name from an ID
+void treacleClass::buildNameResolutionRequestPacket(uint8_t transportId, uint8_t id)			//Ask for a name from an ID
 {
-	buildPacketHeader(protocolId, (uint8_t)nodeId::allNodes, payloadType::nameResolutionRequest);			//Set payloadType
-	protocol[protocolId].transmitBuffer[protocol[protocolId].transmitPacketSize++] = id;
-	protocol[protocolId].transmitBuffer[(uint8_t)headerPosition::packetLength] = protocol[protocolId].transmitPacketSize;						//Update packetLength field
-	processPacketBeforeTransmission(protocolId);																								//Do CRC and encryption if needed
+	buildPacketHeader(transportId, (uint8_t)nodeId::allNodes, payloadType::nameResolutionRequest);			//Set payloadType
+	transport[transportId].transmitBuffer[transport[transportId].transmitPacketSize++] = id;
+	transport[transportId].transmitBuffer[(uint8_t)headerPosition::packetLength] = transport[transportId].transmitPacketSize;						//Update packetLength field
+	processPacketBeforeTransmission(transportId);																								//Do CRC and encryption if needed
 }
-void treacleClass::buildIdAndNameResolutionResponsePacket(uint8_t protocolId, uint8_t id, uint8_t senderId)		//Supply ID and name
+void treacleClass::buildIdAndNameResolutionResponsePacket(uint8_t transportId, uint8_t id, uint8_t senderId)		//Supply ID and name
 {
-	buildPacketHeader(protocolId, senderId, payloadType::idAndNameResolutionResponse);															//Set recipient and payloadType
-	protocol[protocolId].transmitBuffer[protocol[protocolId].transmitPacketSize++] = id;														//Add the nodeId
+	buildPacketHeader(transportId, senderId, payloadType::idAndNameResolutionResponse);															//Set recipient and payloadType
+	transport[transportId].transmitBuffer[transport[transportId].transmitPacketSize++] = id;														//Add the nodeId
 	if(id == currentNodeId && currentNodeName != nullptr)
 	{
-		protocol[protocolId].transmitBuffer[protocol[protocolId].transmitPacketSize++] = strlen(currentNodeName);								//Add the name length
-		memcpy(&protocol[protocolId].transmitBuffer[protocol[protocolId].transmitPacketSize], currentNodeName, strlen(currentNodeName));		//Add the name
-		protocol[protocolId].transmitPacketSize += strlen(currentNodeName);
-		protocol[protocolId].transmitBuffer[(uint8_t)headerPosition::packetLength] = protocol[protocolId].transmitPacketSize;					//Update packetLength field
+		transport[transportId].transmitBuffer[transport[transportId].transmitPacketSize++] = strlen(currentNodeName);								//Add the name length
+		memcpy(&transport[transportId].transmitBuffer[transport[transportId].transmitPacketSize], currentNodeName, strlen(currentNodeName));		//Add the name
+		transport[transportId].transmitPacketSize += strlen(currentNodeName);
+		transport[transportId].transmitBuffer[(uint8_t)headerPosition::packetLength] = transport[transportId].transmitPacketSize;					//Update packetLength field
 	}
 	else
 	{
-		uint8_t index = indexFromId(id);
-		if(index != maximumNumberOfNodes)
+		uint8_t nodeIndex = nodeIndexFromId(id);
+		if(nodeIndex != maximumNumberOfNodes)
 		{
-			protocol[protocolId].transmitBuffer[protocol[protocolId].transmitPacketSize++] = strlen(node[index].name);							//Add the name length
-			memcpy(&protocol[protocolId].transmitBuffer[protocol[protocolId].transmitPacketSize], node[index].name, strlen(node[index].name));	//Add the name
-			protocol[protocolId].transmitPacketSize += strlen(node[index].name);
-			protocol[protocolId].transmitBuffer[(uint8_t)headerPosition::packetLength] = protocol[protocolId].transmitPacketSize;				//Update packetLength field
+			transport[transportId].transmitBuffer[transport[transportId].transmitPacketSize++] = strlen(node[nodeIndex].name);							//Add the name length
+			memcpy(&transport[transportId].transmitBuffer[transport[transportId].transmitPacketSize], node[nodeIndex].name, strlen(node[nodeIndex].name));	//Add the name
+			transport[transportId].transmitPacketSize += strlen(node[nodeIndex].name);
+			transport[transportId].transmitBuffer[(uint8_t)headerPosition::packetLength] = transport[transportId].transmitPacketSize;				//Update packetLength field
 		}
 	}
-	processPacketBeforeTransmission(protocolId);																								//Do CRC and encryption if needed
+	processPacketBeforeTransmission(transportId);																								//Do CRC and encryption if needed
 }
 /*
  *
@@ -1125,7 +1173,7 @@ void treacleClass::buildIdAndNameResolutionResponsePacket(uint8_t protocolId, ui
 void treacleClass::unpackPacket()
 {
 	debugPrint(debugString_treacleSpace);
-	debugPrintProtocolName(receiveProtocol);
+	debugPrintTransportName(receiveTransport);
 	debugPrint(' ');
 	debugPrint(debugString_received);
 	debugPrint(' ');
@@ -1167,56 +1215,56 @@ void treacleClass::unpackPacket()
 						}
 					}
 					debugPrint(' ');
-					uint8_t index = indexFromId(receiveBuffer[(uint8_t)headerPosition::sender]);								//Turn node ID into index
-					if(node[index].name != nullptr)
+					uint8_t nodeIndex = nodeIndexFromId(receiveBuffer[(uint8_t)headerPosition::sender]);								//Turn node ID into nodeIndex
+					if(node[nodeIndex].name != nullptr)
 					{
 						debugPrint('"');
-						debugPrint(node[index].name);
+						debugPrint(node[nodeIndex].name);
 						debugPrint('"');
 						debugPrint(' ');
 					}
-					if(receiveBuffer[(uint8_t)headerPosition::payloadNumber] == node[index].lastPayloadNumber[receiveProtocol])	//Check for duplicate packets
+					if(receiveBuffer[(uint8_t)headerPosition::payloadNumber] == node[nodeIndex].lastPayloadNumber[receiveTransport])	//Check for duplicate packets
 					{
 						debugPrintln(debugString_duplicate);
 						clearReceiveBuffer();
 						return;
 					}
-					node[index].lastPayloadNumber[receiveProtocol] = receiveBuffer[(uint8_t)headerPosition::payloadNumber];
+					node[nodeIndex].lastPayloadNumber[receiveTransport] = receiveBuffer[(uint8_t)headerPosition::payloadNumber];
 					debugPrint(debugString_payload_numberColon);
-					debugPrint(node[index].lastPayloadNumber[receiveProtocol]);
-					if(node[index].rxReliability[receiveProtocol] != 0xffff)
+					debugPrint(node[nodeIndex].lastPayloadNumber[receiveTransport]);
+					if(node[nodeIndex].rxReliability[receiveTransport] != 0xffff)
 					{
 						debugPrint(' ');
 						debugPrint(debugString_rxReliability);
 						debugPrint(':');
-						debugPrint(node[index].rxReliability[receiveProtocol]);
+						debugPrint(node[nodeIndex].rxReliability[receiveTransport]);
 					}
-					node[index].rxReliability[receiveProtocol] = (node[index].rxReliability[receiveProtocol] >> 1) | 0x8000;	//Potentially improve rxReliability
-					node[index].lastTick[receiveProtocol] = millis();															//Update last tick time
-					node[index].nextTick[receiveProtocol] = ((uint16_t)receiveBuffer[(uint8_t)headerPosition::nextTick])<<8;	//Update next tick time MSB
-					node[index].nextTick[receiveProtocol] += ((uint16_t)receiveBuffer[1+(uint8_t)headerPosition::nextTick]);	//Update next tick time LSB
+					node[nodeIndex].rxReliability[receiveTransport] = (node[nodeIndex].rxReliability[receiveTransport] >> 1) | 0x8000;	//Potentially improve rxReliability
+					node[nodeIndex].lastTick[receiveTransport] = millis();															//Update last tick time
+					node[nodeIndex].nextTick[receiveTransport] = ((uint16_t)receiveBuffer[(uint8_t)headerPosition::nextTick])<<8;	//Update next tick time MSB
+					node[nodeIndex].nextTick[receiveTransport] += ((uint16_t)receiveBuffer[1+(uint8_t)headerPosition::nextTick]);	//Update next tick time LSB
 					debugPrint(' ');
 					if(receiveBuffer[(uint8_t)headerPosition::payloadType] == (uint8_t)payloadType::keepalive)
 					{
 						if(currentState != state::selectingId)
 						{
-							unpackKeepalivePacket(receiveProtocol, senderId);	//This might include this node's last used ID after a restart but it is impossible to tell in a keepalive
+							unpackKeepalivePacket(receiveTransport, senderId);	//This might include this node's last used ID after a restart but it is impossible to tell in a keepalive
 						}
 						clearReceiveBuffer();
 					}
 					else if(receiveBuffer[(uint8_t)headerPosition::payloadType] == (uint8_t)payloadType::idResolutionRequest)
 					{
-						unpackIdResolutionRequestPacket(receiveProtocol, senderId);
+						unpackIdResolutionRequestPacket(receiveTransport, senderId);
 						clearReceiveBuffer();
 					}
 					else if(receiveBuffer[(uint8_t)headerPosition::payloadType] == (uint8_t)payloadType::nameResolutionRequest)
 					{
-						unpackNameResolutionRequestPacket(receiveProtocol, senderId);
+						unpackNameResolutionRequestPacket(receiveTransport, senderId);
 						clearReceiveBuffer();
 					}
 					else if(receiveBuffer[(uint8_t)headerPosition::payloadType] == (uint8_t)payloadType::idAndNameResolutionResponse)
 					{
-						unpackIdAndNameResolutionResponsePacket(receiveProtocol, senderId);
+						unpackIdAndNameResolutionResponsePacket(receiveTransport, senderId);
 						clearReceiveBuffer();
 					}
 					else if(receiveBuffer[(uint8_t)headerPosition::payloadType] == (uint8_t)payloadType::shortApplicationData)
@@ -1238,7 +1286,7 @@ void treacleClass::unpackPacket()
 					{
 						debugPrint(' ');
 						debugPrintln(debugString_idResolutionRequest);
-						unpackIdResolutionRequestPacket(receiveProtocol, senderId);		//Answer if possible to give back the same ID to a restarted node
+						unpackIdResolutionRequestPacket(receiveTransport, senderId);		//Answer if possible to give back the same ID to a restarted node
 					}
 					clearReceiveBuffer();
 				}
@@ -1261,34 +1309,35 @@ void treacleClass::unpackPacket()
 		clearReceiveBuffer();
 	}
 }
-void treacleClass::unpackKeepalivePacket(uint8_t protocol, uint8_t senderId)
+void treacleClass::unpackKeepalivePacket(uint8_t transportId, uint8_t senderId)
 {
 	if(receiveBuffer[(uint8_t)headerPosition::packetLength] > (uint8_t)headerPosition::payload)
 	{
 		debugPrintln(debugString_includes);
-		for(uint8_t index = (uint8_t)headerPosition::payload; index < receiveBuffer[(uint8_t)headerPosition::packetLength]; index++)
+		for(uint8_t bufferIndex = (uint8_t)headerPosition::payload; bufferIndex < receiveBuffer[(uint8_t)headerPosition::packetLength]; bufferIndex++)
 		{
 			debugPrint("\t");
 			debugPrint(debugString_nodeId);
 			debugPrint(':');
-			debugPrint(receiveBuffer[index]);
-			if(receiveBuffer[index] == currentNodeId)
+			debugPrint(receiveBuffer[bufferIndex]);
+			uint16_t receivedTxReliabilityMetric = (receiveBuffer[bufferIndex+1]<<8) + (receiveBuffer[bufferIndex+2]); 	//Retrieve txReliability MSB + MSB
+			
+			if(receiveBuffer[bufferIndex] == currentNodeId)
 			{
-				uint8_t senderIndex = indexFromId(receiveBuffer[(uint8_t)headerPosition::sender]);
-				node[senderIndex].txReliability[protocol] = receiveBuffer[index+1]<<8;	//Retrieve txReliability LSB
-				node[senderIndex].txReliability[protocol] += receiveBuffer[index+2];	//Retrieve txReliability MSB
+				uint8_t senderIndex = nodeIndexFromId(receiveBuffer[(uint8_t)headerPosition::sender]);
+				node[senderIndex].txReliability[transportId] = receivedTxReliabilityMetric;
 				debugPrint(' ');
 				debugPrint(debugString_this_node);
 				debugPrint(' ');
 				debugPrint(debugString_txReliability);
 				debugPrint(':');
-				debugPrintln(node[senderIndex].txReliability[protocol]);
+				debugPrintln(node[senderIndex].txReliability[transportId]);
 			}
 			else
 			{
-				if(nodeExists(receiveBuffer[index]) == false)
+				if(nodeExists(receiveBuffer[bufferIndex]) == false)
 				{
-					if(addNode(receiveBuffer[index]))
+					if(addNode(receiveBuffer[bufferIndex], receivedTxReliabilityMetric))	//Use txReliability from the other node as a best guess starting point
 					{
 						debugPrintln(debugString_SpacenewCommaadded);
 					}
@@ -1299,10 +1348,13 @@ void treacleClass::unpackKeepalivePacket(uint8_t protocol, uint8_t senderId)
 				}
 				else
 				{
-					debugPrintln();
+					debugPrint(' ');
+					debugPrint(debugString_txReliability);
+					debugPrint(':');
+					debugPrintln(receivedTxReliabilityMetric);
 				}
 			}
-			index+=2;	//Skip to next node ID in keepalive (the loop already does index++)
+			bufferIndex+=2;	//Skip to next node ID in keepalive (the loop already does bufferIndex++)
 		}
 	}
 	else
@@ -1310,7 +1362,7 @@ void treacleClass::unpackKeepalivePacket(uint8_t protocol, uint8_t senderId)
 		debugPrintln();
 	}
 }
-void treacleClass::unpackIdResolutionRequestPacket(uint8_t protocol, uint8_t senderId)
+void treacleClass::unpackIdResolutionRequestPacket(uint8_t transportId, uint8_t senderId)
 {
 	if(receiveBuffer[(uint8_t)headerPosition::packetLength] > (uint8_t)headerPosition::payload)
 	{
@@ -1321,21 +1373,21 @@ void treacleClass::unpackIdResolutionRequestPacket(uint8_t protocol, uint8_t sen
 		debugPrint(':');
 		debugPrint(nameToLookUp);
 		debugPrint(' ');
-		uint8_t index = indexFromName(nameToLookUp);
-		if(index != maximumNumberOfNodes)
+		uint8_t nodeIndex = nodeIndexFromName(nameToLookUp);
+		if(nodeIndex != maximumNumberOfNodes)
 		{
 			debugPrint(debugString_nodeId);
 			debugPrint(':');
 			if(packetInQueue() == false)
 			{
-				debugPrint(node[index].id);
+				debugPrint(node[nodeIndex].id);
 				debugPrint(' ');
 				debugPrintln(debugString_responding);
-				buildIdAndNameResolutionResponsePacket(protocol, node[index].id, senderId);
+				buildIdAndNameResolutionResponsePacket(transportId, node[nodeIndex].id, senderId);
 			}
 			else
 			{
-				debugPrintln(node[index].id);
+				debugPrintln(node[nodeIndex].id);
 			}
 		}
 		else
@@ -1344,7 +1396,7 @@ void treacleClass::unpackIdResolutionRequestPacket(uint8_t protocol, uint8_t sen
 		}
 	}
 }
-void treacleClass::unpackNameResolutionRequestPacket(uint8_t protocol, uint8_t senderId)
+void treacleClass::unpackNameResolutionRequestPacket(uint8_t transportId, uint8_t senderId)
 {
 	if(receiveBuffer[(uint8_t)headerPosition::packetLength] > (uint8_t)headerPosition::payload)
 	{
@@ -1364,26 +1416,26 @@ void treacleClass::unpackNameResolutionRequestPacket(uint8_t protocol, uint8_t s
 			debugPrintln(debugString_this_node);
 			if(packetInQueue() == false)										//Nothing currently in the queue
 			{
-				buildIdAndNameResolutionResponsePacket(protocol, id, senderId);	//Send a response
+				buildIdAndNameResolutionResponsePacket(transportId, id, senderId);	//Send a response
 			}
 		}
 		else
 		{
-			uint8_t index = indexFromId(id);
-			if(index != maximumNumberOfNodes && node[index].name != nullptr)	//It's known about and there's a name
+			uint8_t nodeIndex = nodeIndexFromId(id);
+			if(nodeIndex != maximumNumberOfNodes && node[nodeIndex].name != nullptr)	//It's known about and there's a name
 			{
 				debugPrint(debugString_node_name);
 				debugPrint(':');
 				if(packetInQueue() == false)							//Nothing currently in the queue
 				{
-					debugPrint(node[index].name);
+					debugPrint(node[nodeIndex].name);
 					debugPrint(' ');
 					debugPrintln(debugString_responding);
-					buildIdAndNameResolutionResponsePacket(protocol, node[index].id, senderId);	//Send a response
+					buildIdAndNameResolutionResponsePacket(transportId, node[nodeIndex].id, senderId);	//Send a response
 				}
 				else
 				{
-					debugPrintln(node[index].name);	//Will have to respond later
+					debugPrintln(node[nodeIndex].name);	//Will have to respond later
 				}
 			}
 			else
@@ -1393,19 +1445,13 @@ void treacleClass::unpackNameResolutionRequestPacket(uint8_t protocol, uint8_t s
 		}
 	}
 }
-void treacleClass::unpackIdAndNameResolutionResponsePacket(uint8_t protocol, uint8_t senderId)
+void treacleClass::unpackIdAndNameResolutionResponsePacket(uint8_t transportId, uint8_t senderId)
 {
 	if(receiveBuffer[(uint8_t)headerPosition::packetLength] > (uint8_t)headerPosition::payload)
 	{
 		uint8_t nameLength = receiveBuffer[1 + (uint8_t)headerPosition::payload];
 		char nameReceived[nameLength + 1];
 		strlcpy(nameReceived,(const char*)&receiveBuffer[2+(uint8_t)headerPosition::payload],nameLength + 1);
-		debugPrint(debugString_received);
-		debugPrint(' ');
-		debugPrint(nameReceived);
-		debugPrint(':');
-		debugPrint(debugString_nodeId);
-		debugPrint(':');
 		if(currentState == state::selectingId)	//Will have asked for this node's ID
 		{
 			if(currentNodeId == 0 && strcmp(nameReceived, currentNodeName) == 0)	//It's this node's name and nodeId is unset
@@ -1419,34 +1465,41 @@ void treacleClass::unpackIdAndNameResolutionResponsePacket(uint8_t protocol, uin
 		}
 		else
 		{
-			uint8_t index = indexFromId(receiveBuffer[(uint8_t)headerPosition::payload]);	//Find the node index this is for
-			if(index != maximumNumberOfNodes)
+			uint8_t nodeIndex = nodeIndexFromId(receiveBuffer[(uint8_t)headerPosition::payload]);	//Find the node nodeIndex this is for
+			if(nodeIndex == maximumNumberOfNodes)													//Node does not exist
 			{
+				addNode(receiveBuffer[(uint8_t)headerPosition::payload]);							//Add the node
+				nodeIndex = nodeIndexFromId(receiveBuffer[(uint8_t)headerPosition::payload]);		//Find the node nodeIndex for this new node
+			}
+			if(nodeIndex != maximumNumberOfNodes)
+			{
+				debugPrintln(debugString_received);
+				debugPrint(debugString_nodeId);
+				debugPrint(':');
+				debugPrint(receiveBuffer[(uint8_t)headerPosition::payload]);
+				debugPrint("<->\"");
+				debugPrint(nameReceived);
+				debugPrint('"');
 				bool copyName = false;
-				if(node[index].name != nullptr && strcmp(node[index].name, nameReceived) != 0)	//Name has changed
+				if(node[nodeIndex].name != nullptr && strcmp(node[nodeIndex].name, nameReceived) != 0)	//Name has changed
 				{
-					delete node[index].name;
+					delete node[nodeIndex].name;
 					copyName = true;
 				}
-				else if(node[index].name == nullptr)	//No name set
+				else if(node[nodeIndex].name == nullptr)	//No name set
 				{
 					copyName = true;
 				}
 				if(copyName == true)	//Copy the name
 				{
-					node[index].name = new char[nameLength];
-					strlcpy(node[index].name,(const char*)&receiveBuffer[2+(uint8_t)headerPosition::payload],nameLength + 1);
-					debugPrint(receiveBuffer[(uint8_t)headerPosition::payload]);
+					node[nodeIndex].name = new char[nameLength];
+					strlcpy(node[nodeIndex].name,(const char*)&receiveBuffer[2+(uint8_t)headerPosition::payload],nameLength + 1);
 					debugPrintln(debugString_SpacenewCommaadded);
 				}
 				else
 				{
-					debugPrintln(receiveBuffer[(uint8_t)headerPosition::payload]);
+					debugPrintln();
 				}
-			}
-			else
-			{
-				debugPrintln(receiveBuffer[(uint8_t)headerPosition::payload]);
 			}
 		}
 	}
@@ -1459,56 +1512,56 @@ void treacleClass::unpackIdAndNameResolutionResponsePacket(uint8_t protocol, uin
 bool treacleClass::nodeExists(uint8_t id)
 {
 	/*
-	for(uint8_t index = 0; index < numberOfNodes; index++)	//Naive iteration, it's not like the data is large
+	for(uint8_t nodeIndex = 0; nodeIndex < numberOfNodes; nodeIndex++)	//Naive iteration, it's not like the data is large
 	{
-		if(node[index].id == id)
+		if(node[nodeIndex].id == id)
 		{
 			return true;
 		}
 	}
 	return false;
 	*/
-	return indexFromId(id) != maximumNumberOfNodes;
+	return nodeIndexFromId(id) != maximumNumberOfNodes;
 }
-uint8_t treacleClass::indexFromId(uint8_t id)
+uint8_t treacleClass::nodeIndexFromId(uint8_t id)
 {
-	for(uint8_t index = 0; index < numberOfNodes; index++)	//Naive iteration, it's not like the data is large
+	for(uint8_t nodeIndex = 0; nodeIndex < numberOfNodes; nodeIndex++)	//Naive iteration, it's not like the data is large
 	{
-		if(node[index].id == id)
+		if(node[nodeIndex].id == id)
 		{
-			return index;
+			return nodeIndex;
 		}
 	}
 	return maximumNumberOfNodes;
 }
-uint8_t treacleClass::indexFromName(char* name)
+uint8_t treacleClass::nodeIndexFromName(char* name)
 {
-	for(uint8_t index = 0; index < numberOfNodes; index++)	//Naive iteration, it's not like the data is large
+	for(uint8_t nodeIndex = 0; nodeIndex < numberOfNodes; nodeIndex++)	//Naive iteration, it's not like the data is large
 	{
-		if(node[index].name != nullptr && strcmp(node[index].name, name) == 0)
+		if(node[nodeIndex].name != nullptr && strcmp(node[nodeIndex].name, name) == 0)
 		{
-			return index;
+			return nodeIndex;
 		}
 	}
 	return maximumNumberOfNodes;
 }
-bool treacleClass::addNode(uint8_t id)
+bool treacleClass::addNode(uint8_t id, uint16_t reliability)
 {
 	if(numberOfNodes < maximumNumberOfNodes)
 	{
 		node[numberOfNodes].id = id;													//Simple storage of ID
-		node[numberOfNodes].lastTick = new uint32_t[numberOfActiveProtocols];			//This is per protocol
-		node[numberOfNodes].nextTick = new uint16_t[numberOfActiveProtocols];			//This is per protocol
-		node[numberOfNodes].rxReliability = new uint16_t[numberOfActiveProtocols];		//This is per protocol
-		node[numberOfNodes].txReliability = new uint16_t[numberOfActiveProtocols];		//This is per protocol
-		node[numberOfNodes].lastPayloadNumber = new uint8_t[numberOfActiveProtocols];	//This is per protocol
-		for(uint8_t index = 0; index < numberOfActiveProtocols; index++)
+		node[numberOfNodes].lastTick = new uint32_t[numberOfActiveTransports];			//This is per transport
+		node[numberOfNodes].nextTick = new uint16_t[numberOfActiveTransports];			//This is per transport
+		node[numberOfNodes].rxReliability = new uint16_t[numberOfActiveTransports];		//This is per transport
+		node[numberOfNodes].txReliability = new uint16_t[numberOfActiveTransports];		//This is per transport
+		node[numberOfNodes].lastPayloadNumber = new uint8_t[numberOfActiveTransports];	//This is per transport
+		for(uint8_t transportIndex = 0; transportIndex < numberOfActiveTransports; transportIndex++)
 		{
-			node[numberOfNodes].lastTick[index] = 0;								//Clear the values at the start
-			node[numberOfNodes].nextTick[index] = maximumTickTime;
-			node[numberOfNodes].rxReliability[index] = 0;
-			node[numberOfNodes].txReliability[index] = 0;
-			node[numberOfNodes].lastPayloadNumber[index] = 0;
+			node[numberOfNodes].lastTick[transportIndex] = millis();							//Count the addition of the node as a 'tick'
+			node[numberOfNodes].nextTick[transportIndex] = maximumTickTime;					//Don't time it out until it's genuinely missed a 'tick'
+			node[numberOfNodes].rxReliability[transportIndex] = reliability;
+			node[numberOfNodes].txReliability[transportIndex] = reliability;
+			node[numberOfNodes].lastPayloadNumber[transportIndex] = 0;						//Cannot make any assumptions about payload number
 		}
 		numberOfNodes++;
 		return true;
@@ -1520,29 +1573,16 @@ bool treacleClass::addNode(uint8_t id)
  *	Duty cycle management
  *
  */
-void treacleClass::checkDutyCycle()
+void treacleClass::calculateDutyCycle(uint8_t transportId)
 {
-	/*
-	debugPrint(debugString_treacleSpace);
-	debugPrintState(currentState);
-	debugPrint(' ');
-	debugPrint(debugString_for);
-	debugPrint(' ');
-	debugPrint((millis()-lastStateChange)/60E3);
-	debugPrint(' ');
-	debugPrintln(debugString_minutes);
-	*/
-	for(uint8_t index = 0; index < numberOfActiveProtocols; index++)	//This does not cope with counter rollover!
+	transport[transportId].calculatedDutyCycle = ((float)transport[transportId].txTime/(float)millis())/10.0;	//txTime is in micros so divided by 1000 to get percentage
+}
+void treacleClass::calculateDutyCycle()
+{
+	for(uint8_t transportIndex = 0; transportIndex < numberOfActiveTransports; transportIndex++)	//This does not cope with counter rollover!
 	{
-		protocol[index].calculatedDutyCycle = ((float)protocol[index].txTime/(float)millis())/10.0;	//txTime is in micros so divided by 1000 to get percentage
-		/*
-		debugPrint(debugString_treacleSpace);
-		debugPrintProtocolName(index);
-		debugPrint(debugString_SpacedutySpacecycle);
-		debugPrint(':');
-		debugPrint(protocol[index].calculatedDutyCycle);
-		debugPrintln('%');
-		*/
+		
+		//transport[transportIndex].calculatedDutyCycle = ((float)transport[transportIndex].txTime/(float)millis())/10.0;	//txTime is in micros so divided by 1000 to get percentage
 	}
 }
 
@@ -1579,17 +1619,12 @@ void treacleClass::clearReceiveBuffer()
 }
 uint32_t treacleClass::messageWaiting()
 {
-	if(millis() - lastDutyCycleCheck > dutyCycleCheckInterval)
-	{
-		lastDutyCycleCheck = millis();
-		checkDutyCycle();
-	}
 	if(debug_uart_ != nullptr && millis() - lastStatusMessage > 60E3)
 	{
 		lastStatusMessage = millis();
 		showStatus();
 	}
-	if(loRaProtocolId != 255 && protocol[loRaProtocolId].initialised == true && loRaIrqPin == -1)	//Polling method for loRa packets, must be enabled and initialised
+	if(loRaTransportId != 255 && transport[loRaTransportId].initialised == true && loRaIrqPin == -1)	//Polling method for loRa packets, must be enabled and initialised
 	{
 		receiveLoRa();
 	}
@@ -1659,27 +1694,27 @@ bool treacleClass::queueMessage(const unsigned char* data, uint8_t length)
 }
 bool treacleClass::queueMessage(uint8_t* data, uint8_t length)
 {
-	bool nodeReached[numberOfNodes] = {};	//Used to track which nodes _should_ have been reached, in protocol priority order and avoid sending using lower priority protocols, if possible
+	bool nodeReached[numberOfNodes] = {};	//Used to track which nodes _should_ have been reached, in transport priority order and avoid sending using lower priority transports, if possible
 	uint8_t numberOfNodesReached = 0;
 	if(length < maximumPayloadSize)
 	{
-		for (uint8_t protocolId = 0; protocolId < numberOfActiveProtocols; protocolId++)
+		for (uint8_t transportId = 0; transportId < numberOfActiveTransports; transportId++)
 		{
-			if(protocol[protocolId].initialised == true &&	//It's initialised
-				packetInQueue(protocolId) == false) 		//It's got nothing waiting to go
-				//node[nodeIndex].txReliability[protocolId] > 0x0000)	//Don't queue up unless _some_ keepalives are getting through
+			if(transport[transportId].initialised == true &&	//It's initialised
+				packetInQueue(transportId) == false) 		//It's got nothing waiting to go
+				//node[nodeIndex].txReliability[transportId] > 0x0000)	//Don't queue up unless _some_ keepalives are getting through
 			{
-				buildPacketHeader(protocolId, (uint8_t)nodeId::allNodes, payloadType::shortApplicationData);			//Make an application data packet
-				memcpy(&protocol[protocolId].transmitBuffer[(uint8_t)headerPosition::payload], data, length);			//Copy the data starting at headerPosition::payload
-				protocol[protocolId].transmitBuffer[(uint8_t)headerPosition::packetLength] = 							//Update packetLength field
+				buildPacketHeader(transportId, (uint8_t)nodeId::allNodes, payloadType::shortApplicationData);			//Make an application data packet
+				memcpy(&transport[transportId].transmitBuffer[(uint8_t)headerPosition::payload], data, length);			//Copy the data starting at headerPosition::payload
+				transport[transportId].transmitBuffer[(uint8_t)headerPosition::packetLength] = 							//Update packetLength field
 				(uint8_t)headerPosition::payload + length;
-				protocol[protocolId].transmitPacketSize += length;														//Update the length of the transmit buffer
-				processPacketBeforeTransmission(protocolId);															//Do CRC and encryption if needed
+				transport[transportId].transmitPacketSize += length;														//Update the length of the transmit buffer
+				processPacketBeforeTransmission(transportId);															//Do CRC and encryption if needed
 				for(uint8_t nodeIndex = 0; nodeIndex < numberOfNodes; nodeIndex++)
 				{
 					if(nodeReached[nodeIndex] == false)
 					{
-						if(node[nodeIndex].txReliability[protocolId] > 0xff00)	//This node is PROBABLY reachable on this protocol!
+						if(node[nodeIndex].txReliability[transportId] > 0xff00)	//This node is PROBABLY reachable on this transport!
 						{
 							nodeReached[nodeIndex] == true;
 							numberOfNodesReached++;
@@ -1689,6 +1724,7 @@ bool treacleClass::queueMessage(uint8_t* data, uint8_t length)
 			}
 			if(numberOfNodesReached == numberOfNodes)
 			{
+				/*
 				debugPrint(debugString_treacleSpace);
 				debugPrint(debugString_all);
 				debugPrint(' ');
@@ -1698,9 +1734,10 @@ bool treacleClass::queueMessage(uint8_t* data, uint8_t length)
 				debugPrint(' ');
 				debugPrint(debugString_with);
 				debugPrint(' ');
-				debugPrintProtocolName(protocolId);
+				debugPrintTransportName(transportId);
 				debugPrintln();
-				return true;	//We have almost certainly reached all the nodes with this protocol, do not queue the message for lower priority (or higher cost) protocols
+				*/
+				return true;	//We have almost certainly reached all the nodes with this transport, do not queue the message for lower priority (or higher cost) transports
 			}
 		}
 		return true;
@@ -1742,27 +1779,27 @@ void treacleClass::showStatus()
 	debugPrint((millis()-lastStateChange)/60E3);
 	debugPrint(' ');
 	debugPrintln(debugString_minutes);
-	for(uint8_t protocolIndex = 0; protocolIndex < numberOfActiveProtocols; protocolIndex++)
+	for(uint8_t transportId = 0; transportId < numberOfActiveTransports; transportId++)
 	{
 		debugPrint(debugString_treacleSpace);
 		debugPrint("\t");
-		debugPrintProtocolName(protocolIndex);
+		debugPrintTransportName(transportId);
 		debugPrint(debugString_SpacedutySpacecycle);
 		debugPrint(':');
-		debugPrint(protocol[protocolIndex].calculatedDutyCycle);
+		debugPrint(transport[transportId].calculatedDutyCycle);
 		debugPrint('%');
 		debugPrint(' ');
 		debugPrint(debugString_TXcolon);
-		debugPrint(protocol[protocolIndex].txPackets);
+		debugPrint(transport[transportId].txPackets);
 		debugPrint(' ');
 		debugPrint(debugString_TX_drops_colon);
-		debugPrint(protocol[protocolIndex].txPacketsDropped);
+		debugPrint(transport[transportId].txPacketsDropped);
 		debugPrint(' ');
 		debugPrint(debugString_RXcolon);
-		debugPrint(protocol[protocolIndex].rxPackets);
+		debugPrint(transport[transportId].rxPackets);
 		debugPrint(' ');
 		debugPrint(debugString_RX_drops_colon);
-		debugPrintln(protocol[protocolIndex].rxPacketsDropped);
+		debugPrintln(transport[transportId].rxPacketsDropped);
 	}
 	for(uint8_t nodeIndex = 0; nodeIndex < numberOfNodes; nodeIndex++)
 	{
@@ -1779,26 +1816,26 @@ void treacleClass::showStatus()
 			debugPrint('"');
 		}
 		debugPrintln();
-		for(uint8_t protocolIndex = 0; protocolIndex < numberOfActiveProtocols; protocolIndex++)
+		for(uint8_t transportId = 0; transportId < numberOfActiveTransports; transportId++)
 		{
 			debugPrint(debugString_treacleSpace);
 			debugPrint("\t\t");
-			debugPrintProtocolName(protocolIndex);
+			debugPrintTransportName(transportId);
 			debugPrint(' ');
 			debugPrint(debugString_txReliability);
 			debugPrint(':');
-			debugPrint(100.0*countBits(node[nodeIndex].txReliability[protocolIndex])/16.0);
+			debugPrint(100.0*countBits(node[nodeIndex].txReliability[transportId])/16.0);
 			debugPrint('%');
 			debugPrint(' ');
 			debugPrint(debugString_rxReliability);
 			debugPrint(':');
-			debugPrint(100.0*countBits(node[nodeIndex].rxReliability[protocolIndex])/16.0);
+			debugPrint(100.0*countBits(node[nodeIndex].rxReliability[transportId])/16.0);
 			debugPrint('%');
 			debugPrint(' ');
 			debugPrint(debugString_payload_numberColon);
-			debugPrintln(node[nodeIndex].lastPayloadNumber[protocolIndex]);
-			//uint32_t* lastTick = nullptr; 			//This is per protocol
-			//uint16_t* nextTick = nullptr; 			//This is per protocol
+			debugPrintln(node[nodeIndex].lastPayloadNumber[transportId]);
+			//uint32_t* lastTick = nullptr; 			//This is per transport
+			//uint16_t* nextTick = nullptr; 			//This is per transport
 		}
 	}
 }

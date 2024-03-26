@@ -89,17 +89,17 @@ class treacleClass	{
 		uint32_t lastStateChange = 0;				//Track time of state changes
 		void changeCurrentState(state);				//Change state and track the time of change
 		
-		//Protocol information
-		uint8_t numberOfActiveProtocols = 0;		//Used to track protocol IDs
+		//Transport information
+		uint8_t numberOfActiveTransports = 0;		//Used to track transport IDs
 
 		//Transmit packet buffers
 		static const uint8_t maximumBufferSize= 250;//Maximum buffer size, which is based off ESP-Now max size
 		static const uint8_t maximumPayloadSize=238;//Maximum application payload size, which is based off ESP-Now max size
 		
-		struct protocolData
+		struct transportData
 		{
-			bool initialised = false;					//Has the protocol initialised OK?
-			bool encrypted = false;						//Is the protocol encrypted?
+			bool initialised = false;					//Has the transport initialised OK?
+			bool encrypted = false;						//Is the transport encrypted?
 			uint32_t txPackets = 0;						//Simple stats for successfully transmitted packets
 			uint32_t txPacketsDropped = 0;				//Simple stats for failed transmit packets
 			uint32_t rxPackets = 0;						//Simple stats for successfully received packets
@@ -110,13 +110,13 @@ class treacleClass	{
 			float calculatedDutyCycle = 0;				//Calculated from txTime and millis()
 			float maximumDutyCycle = 1;					//Used as a hard brake on TX if exceeded
 			uint32_t lastTick;							//Track this node's ticks
-			uint16_t nextTick;							//How long until the next tick for each protocol, which is important
+			uint16_t nextTick;							//How long until the next tick for each transport, which is important
 			uint8_t transmitBuffer[maximumBufferSize];	//General transmit buffer
 			uint8_t transmitPacketSize = 0;				//Current transmit packet size
-			bool bufferSent = true;						//Per protocol marker for when something is sent
+			bool bufferSent = true;						//Per transport marker for when something is sent
 			uint8_t payloadNumber = 0;					//Sequence number for payloads, this will overflow regularly
 		};
-		protocolData* protocol = nullptr;			//This will be allocated from heap during begin()
+		transportData* transport = nullptr;			//This will be allocated from heap during begin()
 		
 		
 		//Node information
@@ -127,36 +127,38 @@ class treacleClass	{
 		{
 			uint8_t id = 0;
 			char* name = nullptr;
-			uint32_t* lastTick = nullptr; 			//This is per protocol
-			uint16_t* nextTick = nullptr; 			//This is per protocol
-			uint16_t* txReliability = nullptr;		//This is per protocol
-			uint16_t* rxReliability = nullptr;		//This is per protocol
-			uint8_t* lastPayloadNumber = nullptr;	//This is per protocol
+			uint32_t* lastTick = nullptr; 			//This is per transport
+			uint16_t* nextTick = nullptr; 			//This is per transport
+			uint16_t* txReliability = nullptr;		//This is per transport
+			uint16_t* rxReliability = nullptr;		//This is per transport
+			uint8_t* lastPayloadNumber = nullptr;	//This is per transport
 		};
 		nodeInfo node[maximumNumberOfNodes];		//Chunky struct could overwhelm a small microcontroller, so be careful
 		//nodeInfo* node;							//Chunky struct could overwhelm a small microcontroller, so be careful
 		//Node management functions
 		bool nodeExists(uint8_t id);				//Check if a node ID exists
-		uint8_t indexFromId(uint8_t id);			//Get an index into nodeInfo from a node ID
-		bool addNode(uint8_t id);					//Create a node
-		uint8_t indexFromName(char* name);			//Get an index into nodeInfo from a node name
+		uint8_t nodeIndexFromId(uint8_t id);		//Get an index into nodeInfo from a node ID
+		bool addNode(uint8_t id,					//Create a node. Default to excellent symmetric reliability
+			uint16_t reliability = 0xffff);			//Create a node with symmetric reliability
+		uint8_t nodeIndexFromName(char* name);		//Get an index into nodeInfo from a node name
 		
 		//Node ID management
 		char* currentNodeName = nullptr;			//Everything has a name, don't use numerical addresses
 		uint8_t currentNodeId = 0;					//Current node ID, 0 implies not set
 		uint8_t minimumNodeId = 1;					//Lowest a node ID can be
-		uint8_t maximumNodeId = 16;					//Highest a node ID can be
+		uint8_t maximumNodeId = 254;				//Highest a node ID can be
 		bool selectNodeId();						//Select a node ID for this node
 		
 		//Duty cycle monitoring
 		uint32_t lastDutyCycleCheck = 0;			//Time of last duty cycle check
 		uint32_t dutyCycleCheckInterval = 1E3;		//Check duty cycle every 1s
-		void checkDutyCycle();						//Calculate the duty cycle based off current txTime
+		void calculateDutyCycle(uint8_t);			//Calculate the duty cycle for a specific transport based off current txTime
+		void calculateDutyCycle();					//Calculate the duty cycle based off current txTime
 		
 		//Receive packet buffers
 		uint8_t receiveBuffer[maximumBufferSize];	//General receive buffer
 		uint8_t receiveBufferSize = 0;				//Current receive payload size
-		uint8_t receiveProtocol = 0;				//Protocol that received the packet
+		uint8_t receiveTransport = 0;				//Transport that received the packet
 		bool receiveBufferDecrypted = false;		//Has the decryption been done?
 		bool receiveBufferCrcChecked = false;		//Has the CRC been checked and removed?
 		//Packet receiving functions
@@ -223,11 +225,11 @@ class treacleClass	{
 			uint8_t, uint8_t);
 
 		//General packet handling
-		bool processPacketBeforeTransmission(uint8_t protocol);//Add CRC then encrypt, if necessary and possible
+		bool processPacketBeforeTransmission(uint8_t transport);//Add CRC then encrypt, if necessary and possible
 		
 		//Encryption
-		void enableEncryption(uint8_t protocol);	//Enable encryption for a specific protocol
-		void disableEncryption(uint8_t protocol);	//Disable encryption for a specific protocol
+		void enableEncryption(uint8_t transport);	//Enable encryption for a specific transport
+		void disableEncryption(uint8_t transport);	//Disable encryption for a specific transport
 		uint8_t* encryptionKey = nullptr;			//Left null until set
 		#ifdef ESP32
 			esp_aes_context context;				//AES context
@@ -257,14 +259,14 @@ class treacleClass	{
 		bool sendPacketOnTick();					//Send a single packet if it is due, returns true if this happens
 		void timeOutTicks();						//Potentially time out ticks from other nodes if they stop responding
 		
-		//Protocol abstraction helpers
-		bool sendBuffer(uint8_t, uint8_t*,			//Picks the appropriate sendBuffer function based on protocol
+		//Transport abstraction helpers
+		bool sendBuffer(uint8_t, uint8_t*,			//Picks the appropriate sendBuffer function based on transport
 			uint8_t payloadSize);
-		bool packetInQueue();						//Check queue for every protocol
-		bool packetInQueue(uint8_t);				//Check queue for a specific protocol
+		bool packetInQueue();						//Check queue for every transport
+		bool packetInQueue(uint8_t);				//Check queue for a specific transport
 		
 		//ESP-Now specific settings
-		uint8_t espNowProtocolId = 255;				//ID assigned to this protocol if enabled, 255 implies it is not
+		uint8_t espNowTransportId = 255;				//ID assigned to this transport if enabled, 255 implies it is not
 		uint8_t broadcastMacAddress[6] = {			//Most ESP-Now communications is broadcast
 		0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 		uint8_t preferredespNowChannel = 1;			//It may not be possible to switch to the preferred channel if it is a WiFi client
@@ -279,7 +281,7 @@ class treacleClass	{
 			uint8_t);
 		
 		//LoRa specific settings
-		uint8_t loRaProtocolId = 255;				//ID assigned to this protocol if enabled, 255 implies it is not
+		uint8_t loRaTransportId = 255;				//ID assigned to this transport if enabled, 255 implies it is not
 		int8_t loRaCSpin = -1;						//LoRa radio chip select pin
 		int8_t loRaResetPin = -1;					//LoRa radio reset pin
 		int8_t loRaIrqPin = -1;						//LoRa radio interrupt pin
@@ -296,7 +298,7 @@ class treacleClass	{
 		bool receiveLoRa();							//Polling receive function
 		
 		//COBS/Serial specific setting
-		uint8_t cobsProtocolId = 255;				//ID assigned to this protocol if enabled, 255 implies it is not
+		uint8_t cobsTransportId = 255;				//ID assigned to this transport if enabled, 255 implies it is not
 		Stream *cobsUart_ = nullptr;				//COBS happens over a UART
 		uint32_t cobsBaudRate = 115200;				//COBS needs a baud rate
 		//COBS/Serial specific functions
@@ -374,8 +376,8 @@ class treacleClass	{
 		const char debugString_received[9] PROGMEM = "received";
 		const char debugString_toSpace[4] PROGMEM = "to ";
 		const char debugString_fromSpace[6] PROGMEM = "from ";
-		const char debugString_ActiveSpaceProtocols[17] PROGMEM = "active protocols";
-		const char debugString_SpaceProtocolID[13] PROGMEM = " protocol ID";
+		const char debugString_ActiveSpaceTransports[18] PROGMEM = "active transports";
+		const char debugString_SpaceTransportID[14] PROGMEM = " transport ID";
 		const char debugString_packetSpace[8] PROGMEM = "packet ";
 		const char debugString_dropped[8] PROGMEM = "dropped";
 		const char debugString_addingSpace[8] PROGMEM = "adding ";
@@ -422,11 +424,11 @@ class treacleClass	{
 		const char debugString_RX_drops_colon[10] PROGMEM = "RX drops:";
 		const char debugString_up[3] PROGMEM = "up";
 		
-		void debugPrintProtocolName(uint8_t protocol)
+		void debugPrintTransportName(uint8_t transport)
 		{
-			if(protocol == espNowProtocolId){debugPrint(debugString_ESPNow);}
-			else if(protocol == loRaProtocolId){debugPrint(debugString_LoRa);}
-			else if(protocol == cobsProtocolId){debugPrint(debugString_COBS);}
+			if(transport == espNowTransportId){debugPrint(debugString_ESPNow);}
+			else if(transport == loRaTransportId){debugPrint(debugString_LoRa);}
+			else if(transport == cobsTransportId){debugPrint(debugString_COBS);}
 		}
 		void debugPrintPayloadTypeDescription(uint8_t type)
 		{
