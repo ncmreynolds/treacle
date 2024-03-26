@@ -540,13 +540,13 @@ bool treacleClass::initialiseLoRa()
 		LoRa.setSignalBandwidth(defaultLoRaSignalBandwidth);	//Set badwidth
 		LoRa.setSyncWord(loRaSyncWord);							//Set sync word
 		LoRa.enableCrc();										//Enable CRC check
-		LoRa.receive();											//Start LoRa reception
 		debugPrintln(debugString_OK);
 		transport[loRaTransportId].initialised = true;			//Mark as initialised
 		if(loRaIrqPin != -1)									//Callbacks on IRQ pin
 		{
 			LoRa.onTxDone(										//Send callback function
 				[]() {
+					Serial.println("LORA SENT");
 					if(treacle.transport[treacle.loRaTransportId].txStartTime != 0)			//Check the initial send time was recorded
 					{
 						treacle.transport[treacle.loRaTransportId].txTime += micros()			//Add to the total transmit time
@@ -556,7 +556,38 @@ bool treacleClass::initialiseLoRa()
 					treacle.transport[treacle.loRaTransportId].txPackets++;					//Count the packet
 				}
 			);
+			LoRa.onReceive(
+				[](int receivedMessageLength) {
+					Serial.println("LORA RECEIVED");
+					if(receivedMessageLength > 0)
+					{
+						if(treacle.receiveBufferSize == 0 && receivedMessageLength < treacle.maximumBufferSize)
+						{
+							treacle.transport[treacle.loRaTransportId].rxPackets++;				//Count the packet as received
+							if(LoRa.peek() == (uint8_t)treacle.nodeId::allNodes ||
+								LoRa.peek() == treacle.currentNodeId)							//Packet is meaningful to this node
+							{
+								LoRa.readBytes(treacle.receiveBuffer, receivedMessageLength);	//Copy the LoRa payload
+								treacle.receiveBufferSize = receivedMessageLength;				//Record the amount of payload
+								treacle.receiveBufferCrcChecked = false;						//Mark the payload as unchecked
+								treacle.receiveTransport = treacle.loRaTransportId;				//Record that it was received by ESP-Now
+								treacle.transport[treacle.loRaTransportId].rxPacketsProcessed++;//Count the packet as processed
+							}
+							return;
+						}
+						else
+						{
+							treacle.transport[treacle.loRaTransportId].rxPacketsDropped++;		//Count the drop
+						}
+						while(LoRa.available())													//Drop the packet
+						{
+							LoRa.read();
+						}
+					}
+				}
+			);
 		}
+		LoRa.receive();											//Start LoRa reception
 	}
 	else
 	{
@@ -607,7 +638,7 @@ bool treacleClass::receiveLoRa()
 	uint8_t receivedMessageLength = LoRa.parsePacket();
 	if(receivedMessageLength > 0)
 	{
-		if(receiveBufferSize == 0 && receivedMessageLength < treacle.maximumBufferSize)
+		if(receiveBufferSize == 0 && receivedMessageLength < maximumBufferSize)
 		{
 			transport[loRaTransportId].rxPackets++;						//Count the packet as received
 			if(LoRa.peek() == (uint8_t)nodeId::allNodes ||
@@ -968,7 +999,8 @@ bool treacleClass::sendPacketOnTick()
 					}
 					else
 					{
-						if(packetInQueue() == false && transport[transportId].payloadNumber%4 == 0)						//If nothing else is queued to transmit over any transport, 25% of packets can be name requests to backfill names
+						//if(packetInQueue() == false && transport[transportId].payloadNumber%4 == 0)	//If nothing else is queued to transmit over any transport, 25% of packets can be name requests to backfill names
+						if(packetInQueue() == false)	//If nothing else is queued to transmit over any transport backfill names
 						{
 							for(uint8_t nodeIndex = 0; nodeIndex < numberOfNodes; nodeIndex++)
 							{
@@ -1060,7 +1092,8 @@ void treacleClass::timeOutTicks()
 				debugPrint(' ');
 				debugPrint(debugString_rxReliability);
 				debugPrint(':');
-				debugPrintln(node[nodeIndex].rxReliability[transportId]);
+				debugPrint(reliabilityPercentage(node[nodeIndex].rxReliability[transportId]));
+				debugPrintln('%');
 			}
 			totalTxReliability = totalTxReliability | node[nodeIndex].txReliability[transportId];		//OR all the bits of transmit reliability we have
 			totalRxReliability = totalRxReliability | node[nodeIndex].rxReliability[transportId];		//OR all the bits of receive reliability we have
@@ -1237,7 +1270,8 @@ void treacleClass::unpackPacket()
 						debugPrint(' ');
 						debugPrint(debugString_rxReliability);
 						debugPrint(':');
-						debugPrint(node[nodeIndex].rxReliability[receiveTransport]);
+						debugPrint(reliabilityPercentage(node[nodeIndex].rxReliability[receiveTransport]));
+						debugPrint('%');
 					}
 					node[nodeIndex].rxReliability[receiveTransport] = (node[nodeIndex].rxReliability[receiveTransport] >> 1) | 0x8000;	//Potentially improve rxReliability
 					node[nodeIndex].lastTick[receiveTransport] = millis();															//Update last tick time
@@ -1841,12 +1875,12 @@ void treacleClass::showStatus()
 			debugPrint(' ');
 			debugPrint(debugString_txReliability);
 			debugPrint(':');
-			debugPrint(100.0*countBits(node[nodeIndex].txReliability[transportId])/16.0);
+			debugPrint(reliabilityPercentage(node[nodeIndex].txReliability[transportId]));
 			debugPrint('%');
 			debugPrint(' ');
 			debugPrint(debugString_rxReliability);
 			debugPrint(':');
-			debugPrint(100.0*countBits(node[nodeIndex].rxReliability[transportId])/16.0);
+			debugPrint(reliabilityPercentage(node[nodeIndex].rxReliability[transportId]));
 			debugPrint('%');
 			debugPrint(' ');
 			debugPrint(debugString_payload_numberColon);
@@ -1855,6 +1889,15 @@ void treacleClass::showStatus()
 			//uint16_t* nextTick = nullptr; 			//This is per transport
 		}
 	}
+}
+/*
+ *
+ *	Turns a bitmask reliability measure into a percentate
+ *
+ */
+float treacleClass::reliabilityPercentage(uint16_t bitmask)
+{
+	return 100.0*countBits(bitmask)/16.0;
 }
 /*
  *

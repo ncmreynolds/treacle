@@ -308,6 +308,7 @@ class treacleClass	{
 		
 		//Utility functions
 		uint8_t countBits(uint32_t thingToCount);	//Number of set bits in an uint32_t, or anything else
+		float reliabilityPercentage(uint16_t);		//Turn an uint32_t bitmask into a printable reliability measure
 		/*
 		 *
 		 *	Debugging helpers

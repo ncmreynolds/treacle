@@ -15,13 +15,14 @@
 uint8_t encryptionKey[] = {0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80};
 uint8_t loRaCsPin = 34;
 uint8_t loRaResetPin = 33;
+uint8_t loRaIrqPin = 38;
 
 void setup()
 {
   Serial.begin(115200);                         //Set up the Serial Monitor
   delay(1000);                                  //Allow the IDE Serial Monitor to start after flashing
   treacle.enableDebug(Serial);                  //Enable debug on Serial
-  treacle.setLoRaPins(loRaCsPin, loRaResetPin); //Set the LoRa reset and CS pins, assuming other default SPI pins
+  treacle.setLoRaPins(loRaCsPin, loRaResetPin, loRaIrqPin); //Set the LoRa reset and CS pins, assuming other default SPI pins
   treacle.setLoRaFrequency(868E6);              //Set the LoRa frequency to 868Mhz. Valid value are 433/868/915Mhz depending on region
   treacle.enableLoRa();                         //Enable LoRa
   //treacle.setEncryptionKey(encryptionKey);      //Set encryption key for all protocols
