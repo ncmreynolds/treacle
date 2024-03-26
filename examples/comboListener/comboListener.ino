@@ -2,7 +2,7 @@
  * 
  * Basic example for treacle (https://github.com/ncmreynolds/treacle)
  * 
- * This example simply enables logging and starts treacle with LoRa as a transport.
+ * This example simply enables logging and starts treacle with ESP-Now as primary transport and LoRa as a secondary transport.
  * 
  * Any incoming messages will be printed to the Serial Monitor.
  * 
@@ -23,7 +23,8 @@ void setup()
   treacle.enableDebug(Serial);                  //Enable debug on Serial
   treacle.setLoRaPins(loRaCsPin, loRaResetPin); //Set the LoRa reset and CS pins, assuming other default SPI pins
   treacle.setLoRaFrequency(868E6);              //Set the LoRa frequency to 868Mhz. Valid value are 433/868/915Mhz depending on region
-  treacle.enableLoRa();                         //Enable LoRa
+  treacle.enableEspNow();                       //Enable ESP-Now, this will be the highest proiority protocol
+  treacle.enableLoRa();                         //Enable LoRa, this will only be used of something can't be reached by the protocol with a higher priority
   //treacle.setEncryptionKey(encryptionKey);      //Set encryption key for all protocols
   treacle.begin();                              //Start treacle
 }

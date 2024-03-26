@@ -19,7 +19,7 @@ void setup()
   delay(1000);                              //Allow the IDE Serial Monitor to start after flashing
   treacle.enableDebug(Serial);              //Enable debug on Serial
   treacle.enableEspNow();                   //Enable ESP-Now
-  treacle.setEncryptionKey(encryptionKey);  //Set encryption key for all protocols
+  //treacle.setEncryptionKey(encryptionKey);  //Set encryption key for all protocols
   treacle.begin();                          //Start treacle
 }
 

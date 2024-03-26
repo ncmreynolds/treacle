@@ -2,7 +2,7 @@
  * 
  * Basic example for treacle (https://github.com/ncmreynolds/treacle)
  * 
- * This example simply enables logging and starts treacle with ESP-Now as a transport.
+ * This example simply enables logging and starts treacle with ESP-Now as primary transport and LoRa as a secondary transport.
  * 
  * It regularly queues a null-terminataed string to send by treacle
  * 
