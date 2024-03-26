@@ -919,27 +919,27 @@ void treacleClass::setTickTime()
 	{
 		if(currentState == state::selectingId)
 		{
-			if(transportIndex == espNowTransportId) transport[transportIndex].nextTick =	1E3 -	tickRandomisation(transportIndex);
+			if(transportIndex == espNowTransportId) transport[transportIndex].nextTick =	10E3 -	tickRandomisation(transportIndex);
 			else if(transportIndex == loRaTransportId) transport[transportIndex].nextTick =	45E3 -	tickRandomisation(transportIndex);
-			else if(transportIndex == cobsTransportId) transport[transportIndex].nextTick =	10E3 -	tickRandomisation(transportIndex);
+			else if(transportIndex == cobsTransportId) transport[transportIndex].nextTick =	50E3 -	tickRandomisation(transportIndex);
 		}
 		else if(currentState == state::selectedId)
 		{
-			if(transportIndex == espNowTransportId) transport[transportIndex].nextTick = 	1E3 -	tickRandomisation(transportIndex);
+			if(transportIndex == espNowTransportId) transport[transportIndex].nextTick = 	10E3 -	tickRandomisation(transportIndex);
 			else if(transportIndex == loRaTransportId) transport[transportIndex].nextTick =	45E3 -	tickRandomisation(transportIndex);
-			else if(transportIndex == cobsTransportId) transport[transportIndex].nextTick =	15E3 -	tickRandomisation(transportIndex);
+			else if(transportIndex == cobsTransportId) transport[transportIndex].nextTick =	50E3 -	tickRandomisation(transportIndex);
 		}
 		else if(currentState == state::online)
 		{
 			if(transportIndex == espNowTransportId) transport[transportIndex].nextTick =	10E3 -	tickRandomisation(transportIndex);
 			else if(transportIndex == loRaTransportId) transport[transportIndex].nextTick =	45E3 -	tickRandomisation(transportIndex);
-			else if(transportIndex == cobsTransportId) transport[transportIndex].nextTick =	100E3 -	tickRandomisation(transportIndex);
+			else if(transportIndex == cobsTransportId) transport[transportIndex].nextTick =	50E3 -	tickRandomisation(transportIndex);
 		}
 		else if(currentState == state::offline)
 		{
-			if(transportIndex == espNowTransportId) transport[transportIndex].nextTick =	5E3 -	tickRandomisation(transportIndex);
+			if(transportIndex == espNowTransportId) transport[transportIndex].nextTick =	10E3 -	tickRandomisation(transportIndex);
 			else if(transportIndex == loRaTransportId) transport[transportIndex].nextTick =	45E3 -	tickRandomisation(transportIndex);
-			else if(transportIndex == cobsTransportId) transport[transportIndex].nextTick =	15E3 -	tickRandomisation(transportIndex);
+			else if(transportIndex == cobsTransportId) transport[transportIndex].nextTick =	50E3 -	tickRandomisation(transportIndex);
 		}
 		else if(currentState == state::stopped)
 		{
@@ -947,9 +947,9 @@ void treacleClass::setTickTime()
 		}
 		else
 		{
-			if(transportIndex == espNowTransportId) transport[transportIndex].nextTick =	maximumTickTime;
-			else if(transportIndex == loRaTransportId) transport[transportIndex].nextTick =	maximumTickTime;
-			else if(transportIndex == cobsTransportId) transport[transportIndex].nextTick =	maximumTickTime;
+			if(transportIndex == espNowTransportId) transport[transportIndex].nextTick =	maximumTickTime -	tickRandomisation(transportIndex);
+			else if(transportIndex == loRaTransportId) transport[transportIndex].nextTick =	maximumTickTime -	tickRandomisation(transportIndex);
+			else if(transportIndex == cobsTransportId) transport[transportIndex].nextTick =	maximumTickTime -	tickRandomisation(transportIndex);
 		}
 	}
 }
@@ -1249,13 +1249,7 @@ void treacleClass::unpackPacket()
 					}
 					debugPrint(' ');
 					uint8_t nodeIndex = nodeIndexFromId(receiveBuffer[(uint8_t)headerPosition::sender]);								//Turn node ID into nodeIndex
-					if(node[nodeIndex].name != nullptr)
-					{
-						debugPrint('"');
-						debugPrint(node[nodeIndex].name);
-						debugPrint('"');
-						debugPrint(' ');
-					}
+					debugPrintString(node[nodeIndex].name);
 					if(receiveBuffer[(uint8_t)headerPosition::payloadNumber] == node[nodeIndex].lastPayloadNumber[receiveTransport])	//Check for duplicate packets
 					{
 						debugPrintln(debugString_duplicate);
@@ -1350,6 +1344,7 @@ void treacleClass::unpackKeepalivePacket(uint8_t transportId, uint8_t senderId)
 		debugPrintln(debugString_includes);
 		for(uint8_t bufferIndex = (uint8_t)headerPosition::payload; bufferIndex < receiveBuffer[(uint8_t)headerPosition::packetLength]; bufferIndex++)
 		{
+			debugPrint(debugString_treacleSpace);
 			debugPrint("\t");
 			debugPrint(debugString_nodeId);
 			debugPrint(':');
@@ -1417,7 +1412,7 @@ void treacleClass::unpackIdResolutionRequestPacket(uint8_t transportId, uint8_t 
 				debugPrint(node[nodeIndex].id);
 				debugPrint(' ');
 				debugPrintln(debugString_responding);
-				buildIdAndNameResolutionResponsePacket(transportId, node[nodeIndex].id, senderId);
+				buildIdAndNameResolutionResponsePacket(transportId, node[nodeIndex].id, senderId);	//This is _probably_ from an unknown node, so send it direct
 			}
 			else
 			{
@@ -1450,7 +1445,7 @@ void treacleClass::unpackNameResolutionRequestPacket(uint8_t transportId, uint8_
 			debugPrintln(debugString_this_node);
 			if(packetInQueue() == false)										//Nothing currently in the queue
 			{
-				buildIdAndNameResolutionResponsePacket(transportId, id, senderId);	//Send a response
+				buildIdAndNameResolutionResponsePacket(transportId, id, (uint8_t)nodeId::allNodes);	//Send a response
 			}
 		}
 		else
@@ -1465,7 +1460,7 @@ void treacleClass::unpackNameResolutionRequestPacket(uint8_t transportId, uint8_
 					debugPrint(node[nodeIndex].name);
 					debugPrint(' ');
 					debugPrintln(debugString_responding);
-					buildIdAndNameResolutionResponsePacket(transportId, node[nodeIndex].id, senderId);	//Send a response
+					buildIdAndNameResolutionResponsePacket(transportId, node[nodeIndex].id, (uint8_t)nodeId::allNodes);	//Send a response
 				}
 				else
 				{
@@ -1816,6 +1811,12 @@ uint8_t treacleClass::maxPayloadSize()
 void treacleClass::showStatus()
 {
 	debugPrint(debugString_treacleSpace);
+	debugPrint(debugString_nodeId);
+	debugPrint(':');
+	debugPrint(currentNodeId);
+	debugPrint(' ');
+	debugPrintString(currentNodeName);
+	debugPrint(' ');
 	debugPrint(debugString_up);
 	debugPrint(':');
 	debugPrint(millis()/60E3);
@@ -1859,14 +1860,8 @@ void treacleClass::showStatus()
 		debugPrint(debugString_nodeId);
 		debugPrint(':');
 		debugPrint(node[nodeIndex].id);
-		if(node[nodeIndex].name != nullptr)
-		{
-			debugPrint(' ');
-			debugPrint('"');
-			debugPrint(node[nodeIndex].name);
-			debugPrint('"');
-		}
-		debugPrintln();
+		debugPrint(' ');
+		debugPrintStringln(node[nodeIndex].name);
 		for(uint8_t transportId = 0; transportId < numberOfActiveTransports; transportId++)
 		{
 			debugPrint(debugString_treacleSpace);

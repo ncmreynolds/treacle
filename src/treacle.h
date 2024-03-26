@@ -172,11 +172,11 @@ class treacleClass	{
 			idResolutionRequest =			0x01,	//Upper four bits are a bitmask
 			nameResolutionRequest =			0x02,
 			idAndNameResolutionResponse =	0x03,
-			shortApplicationData =			0x04,
-			//idAndNameResolutionResponse =	0x05,
-			//idAndNameResolutionResponse =	0x06,
+			duplicateId =					0x04,
+			shutdown =						0x05,
+			//shortApplicationData =		0x06,
 			//idAndNameResolutionResponse =	0x07,
-			//idAndNameResolutionResponse =	0x08,
+			shortApplicationData =			0x08,
 			//idAndNameResolutionResponse =	0x09,
 			//idAndNameResolutionResponse =	0x0a,
 			//idAndNameResolutionResponse =	0x0b,
@@ -451,6 +451,29 @@ class treacleClass	{
 			else if(theState == state::offline){debugPrint(debugString_offline);}
 			else if(theState == state::stopped){debugPrint(debugString_stopped);}
 			else{debugPrint(debugString_unknown);}
+		}
+		void debugPrintString(char* text)
+		{
+			if(text != nullptr)
+			{
+				debugPrint('"');
+				debugPrint(text);
+				debugPrint('"');
+				debugPrint(' ');
+			}
+		}
+		void debugPrintStringln(char* text)
+		{
+			if(text != nullptr)
+			{
+				debugPrint('"');
+				debugPrint(text);
+				debugPrintln('"');
+			}
+			else
+			{
+				debugPrintln();
+			}
 		}
 };
 extern treacleClass treacle;	//Create an instance of the class, as only one is practically usable at a time
