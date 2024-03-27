@@ -43,6 +43,12 @@ class treacleClass	{
 		bool espNowInitialised();					//Is ESP-Now radio correctly initialised?
 		void setEspNowChannel(uint8_t);				//Set the WiFi channel used for ESP-Now
 		uint8_t getEspNowChannel();					//Get the WiFi channel used for ESP-Now
+		uint32_t getEspNowRxPackets();				//Get packet stats
+		uint32_t getEspNowTxPackets();				//Get packet stats
+		uint32_t getEspNowRxPacketsDropped();		//Get packet stats
+		uint32_t getEspNowTxPacketsDropped();		//Get packet stats
+		float getEspNowDutyCycle();					//Get packet stats
+		uint16_t getEspNowTickInterval();			//Get time between packets
 		//LoRa
 		void setLoRaPins(int8_t cs, int8_t reset,	//Set the GPIO for the LoRa radio
 			int8_t irq = -1);
@@ -50,6 +56,12 @@ class treacleClass	{
 		void enableLoRa();							//Enable the LoRa radio
 		bool loRaEnabled();							//Is LoRa radio enabled?
 		bool loRaInitialised();						//Is LoRa radio correctly initialised?
+		uint32_t getLoRaRxPackets();				//Get packet stats
+		uint32_t getLoRaTxPackets();				//Get packet stats
+		uint32_t getLoRaRxPacketsDropped();			//Get packet stats
+		uint32_t getLoRaTxPacketsDropped();			//Get packet stats
+		float getLoRaDutyCycle();					//Get packet stats
+		uint16_t getLoRaTickInterval();				//Get time between packets
 		//COBS/Serial
 		void enableCobs();
 		bool cobsEnabled();
@@ -71,6 +83,8 @@ class treacleClass	{
 		//Encryption
 		void setEncryptionKey(uint8_t* key);		//Set the encryption key
 		//General
+		void setNodeName(char* name);				//Set the node name
+		void setNodeId(uint8_t id);					//Set the nodeId
 		bool begin(uint8_t maxNodes = 80);			//Start treacle, optionally specify a max number of nodes
 		void end();									//Stop treacle
 		void enableDebug(Stream &);					//Start debugging on a stream

@@ -19,6 +19,29 @@ treacleClass::~treacleClass()	//Destructor function
 {
 }
 
+void treacleClass::setNodeName(char* name)
+{
+	if(name != nullptr)
+	{
+		if(currentNodeName != nullptr)
+		{
+			delete currentNodeName;
+		}
+		currentNodeName = new char[strlen(name) + 1];
+		strlcpy(currentNodeName, name, strlen(name) + 1);
+		debugPrint(debugString_treacleSpace);
+		debugPrint(debugString_node_name);
+		debugPrint(':');
+		debugPrintStringln(currentNodeName);
+	}
+}
+void treacleClass::setNodeId(uint8_t id)
+{
+	if(id >= minimumNodeId && id <= maximumNodeId)
+	{
+		currentNodeId = id;
+	}
+}
 bool treacleClass::begin(uint8_t maxNodes)
 {
 	//The maximum number of nodes is used in creating a load of data structures
@@ -124,7 +147,14 @@ bool treacleClass::begin(uint8_t maxNodes)
 				debugPrint(':');
 				debugPrintln(transportId);
 			}
-			changeCurrentState(state::selectingId);
+			if(currentNodeId == 0)
+			{
+				changeCurrentState(state::selectingId);
+			}
+			else
+			{
+				changeCurrentState(state::selectedId);
+			}
 			return true;
 		}
 	}
@@ -248,6 +278,54 @@ void treacleClass::setEspNowChannel(uint8_t channel)
 uint8_t treacleClass::getEspNowChannel()
 {
 	return currentEspNowChannel;								//Gets the current channel
+}
+uint32_t treacleClass::getEspNowRxPackets()
+{
+	if(espNowInitialised())
+	{
+		return transport[espNowTransportId].rxPackets;
+	}
+	return 0;
+}
+uint32_t treacleClass::getEspNowTxPackets()
+{
+	if(espNowInitialised())
+	{
+		return transport[espNowTransportId].txPackets;
+	}
+	return 0;
+}
+uint32_t treacleClass::getEspNowRxPacketsDropped()
+{
+	if(espNowInitialised())
+	{
+		return transport[espNowTransportId].rxPacketsDropped;
+	}
+	return 0;
+}
+uint32_t treacleClass::getEspNowTxPacketsDropped()
+{
+	if(espNowInitialised())
+	{
+		return transport[espNowTransportId].txPacketsDropped;
+	}
+	return 0;
+}
+float treacleClass::getEspNowDutyCycle()
+{
+	if(espNowInitialised())
+	{
+		return transport[espNowTransportId].calculatedDutyCycle;
+	}
+	return 0;
+}
+uint16_t treacleClass::getEspNowTickInterval()
+{
+	if(espNowInitialised())
+	{
+		return transport[espNowTransportId].nextTick;
+	}
+	return 0;
 }
 bool treacleClass::initialiseWiFi()								//Checks to see the state of the WiFi
 {
@@ -603,6 +681,54 @@ bool treacleClass::loRaInitialised()
 		return transport[loRaTransportId].initialised;
 	}
 	return false;
+}
+uint32_t treacleClass::getLoRaRxPackets()
+{
+	if(espNowInitialised())
+	{
+		return transport[loRaTransportId].rxPackets;
+	}
+	return 0;
+}
+uint32_t treacleClass::getLoRaTxPackets()
+{
+	if(loRaInitialised())
+	{
+		return transport[loRaTransportId].txPackets;
+	}
+	return 0;
+}
+uint32_t treacleClass::getLoRaRxPacketsDropped()
+{
+	if(loRaInitialised())
+	{
+		return transport[loRaTransportId].rxPacketsDropped;
+	}
+	return 0;
+}
+uint32_t treacleClass::getLoRaTxPacketsDropped()
+{
+	if(loRaInitialised())
+	{
+		return transport[loRaTransportId].txPacketsDropped;
+	}
+	return 0;
+}
+float treacleClass::getLoRaDutyCycle()
+{
+	if(loRaInitialised())
+	{
+		return transport[loRaTransportId].calculatedDutyCycle;
+	}
+	return 0;
+}
+uint16_t treacleClass::getLoRaTickInterval()
+{
+	if(loRaInitialised())
+	{
+		return transport[loRaTransportId].nextTick;
+	}
+	return 0;
 }
 bool treacleClass::sendBufferByLoRa(uint8_t* buffer, uint8_t packetSize)
 {
