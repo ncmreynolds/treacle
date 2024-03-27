@@ -613,9 +613,9 @@ bool treacleClass::initialiseLoRa()
 	}
 	if (LoRa.begin(loRaFrequency) == true)						//This will hang of CS/IRQ pin not set appropriately
 	{
-		LoRa.setTxPower(defaultLoRaTxPower);					//Set TX power
-		LoRa.setSpreadingFactor(defaultLoRaSpreadingFactor);	//Set spreading factor
-		LoRa.setSignalBandwidth(defaultLoRaSignalBandwidth);	//Set badwidth
+		LoRa.setTxPower(loRaTxPower);							//Set TX power
+		LoRa.setSpreadingFactor(loRaSpreadingFactor);			//Set spreading factor
+		LoRa.setSignalBandwidth(loRaSignalBandwidth);			//Set badwidth
 		LoRa.setSyncWord(loRaSyncWord);							//Set sync word
 		LoRa.enableCrc();										//Enable CRC check
 		debugPrintln(debugString_OK);
@@ -727,6 +727,30 @@ uint16_t treacleClass::getLoRaTickInterval()
 	if(loRaInitialised())
 	{
 		return transport[loRaTransportId].nextTick;
+	}
+	return 0;
+}
+uint8_t treacleClass::getLoRaTxPower()
+{
+	if(loRaInitialised())
+	{
+		return loRaTxPower;
+	}
+	return 0;
+}
+uint8_t treacleClass::getLoRaSpreadingFactor()
+{
+	if(loRaInitialised())
+	{
+		return loRaSpreadingFactor;
+	}
+	return 0;
+}
+uint32_t treacleClass::getLoRaSignalBandwidth()
+{
+	if(loRaInitialised())
+	{
+		return loRaSignalBandwidth;
 	}
 	return 0;
 }

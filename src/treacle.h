@@ -62,6 +62,9 @@ class treacleClass	{
 		uint32_t getLoRaTxPacketsDropped();			//Get packet stats
 		float getLoRaDutyCycle();					//Get packet stats
 		uint16_t getLoRaTickInterval();				//Get time between packets
+		uint8_t getLoRaTxPower();					//LoRa TX power
+		uint8_t getLoRaSpreadingFactor();			//LoRa spreading factor
+		uint32_t getLoRaSignalBandwidth();			//Supported values are 7.8E3, 10.4E3, 15.6E3, 20.8E3, 31.25E3, 41.7E3, 62.5E3, 125E3(default), 250E3, and 500E3.
 		//COBS/Serial
 		void enableCobs();
 		bool cobsEnabled();
@@ -300,9 +303,9 @@ class treacleClass	{
 		int8_t loRaResetPin = -1;					//LoRa radio reset pin
 		int8_t loRaIrqPin = -1;						//LoRa radio interrupt pin
 		uint32_t loRaFrequency = 868E6;				//LoRa frequency, broadly 868 in the EU, US is 915E6, Asia 433E6
-		uint8_t defaultLoRaTxPower = 17;			//LoRa TX power
-		uint8_t defaultLoRaSpreadingFactor = 9;		//LoRa spreading factor
-		uint32_t defaultLoRaSignalBandwidth= 62.5E3;//Supported values are 7.8E3, 10.4E3, 15.6E3, 20.8E3, 31.25E3, 41.7E3, 62.5E3, 125E3(default), 250E3, and 500E3.
+		uint8_t loRaTxPower = 17;					//LoRa TX power
+		uint8_t loRaSpreadingFactor = 9;			//LoRa spreading factor
+		uint32_t loRaSignalBandwidth= 62.5E3;		//Supported values are 7.8E3, 10.4E3, 15.6E3, 20.8E3, 31.25E3, 41.7E3, 62.5E3, 125E3(default), 250E3, and 500E3.
 		uint8_t loRaSyncWord = 0x12;				//Valid options are 0x12, 0x56, 0x78, don't use 0x34 as that is LoRaWAN
 		float lastLoRaRssi = 0.0;					//Track RSSI as an extra indication of reachability
 		//LoRa specific functions
