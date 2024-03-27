@@ -48,6 +48,7 @@ class treacleClass	{
 		uint32_t getEspNowRxPacketsDropped();		//Get packet stats
 		uint32_t getEspNowTxPacketsDropped();		//Get packet stats
 		float getEspNowDutyCycle();					//Get packet stats
+		uint32_t getEspNowDutyCycleExceptions();	//Get packet stats
 		uint16_t getEspNowTickInterval();			//Get time between packets
 		//LoRa
 		void setLoRaPins(int8_t cs, int8_t reset,	//Set the GPIO for the LoRa radio
@@ -61,6 +62,7 @@ class treacleClass	{
 		uint32_t getLoRaRxPacketsDropped();			//Get packet stats
 		uint32_t getLoRaTxPacketsDropped();			//Get packet stats
 		float getLoRaDutyCycle();					//Get packet stats
+		uint32_t getLoRaDutyCycleExceptions();		//Get packet stats
 		uint16_t getLoRaTickInterval();				//Get time between packets
 		uint8_t getLoRaTxPower();					//LoRa TX power
 		uint8_t getLoRaSpreadingFactor();			//LoRa spreading factor
@@ -88,6 +90,7 @@ class treacleClass	{
 		//General
 		void setNodeName(char* name);				//Set the node name
 		void setNodeId(uint8_t id);					//Set the nodeId
+		uint8_t getNodeId();						//Get the nodeId, which may have been autonegotiated
 		bool begin(uint8_t maxNodes = 80);			//Start treacle, optionally specify a max number of nodes
 		void end();									//Stop treacle
 		void enableDebug(Stream &);					//Start debugging on a stream
@@ -126,6 +129,7 @@ class treacleClass	{
 			uint32_t txTime = 0;						//Total time in micros() spent transmitting
 			float calculatedDutyCycle = 0;				//Calculated from txTime and millis()
 			float maximumDutyCycle = 1;					//Used as a hard brake on TX if exceeded
+			uint32_t dutyCycleExceptions = 0;			//Count any time it goes over duty cycle
 			uint32_t lastTick;							//Track this node's ticks
 			uint16_t nextTick;							//How long until the next tick for each transport, which is important
 			uint8_t transmitBuffer[maximumBufferSize];	//General transmit buffer

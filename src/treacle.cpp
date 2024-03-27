@@ -42,6 +42,10 @@ void treacleClass::setNodeId(uint8_t id)
 		currentNodeId = id;
 	}
 }
+uint8_t treacleClass::getNodeId()
+{
+	return currentNodeId;
+}
 bool treacleClass::begin(uint8_t maxNodes)
 {
 	//The maximum number of nodes is used in creating a load of data structures
@@ -316,6 +320,14 @@ float treacleClass::getEspNowDutyCycle()
 	if(espNowInitialised())
 	{
 		return transport[espNowTransportId].calculatedDutyCycle;
+	}
+	return 0;
+}
+uint32_t treacleClass::getEspNowDutyCycleExceptions()
+{
+	if(espNowInitialised())
+	{
+		return transport[espNowTransportId].dutyCycleExceptions;
 	}
 	return 0;
 }
@@ -719,6 +731,14 @@ float treacleClass::getLoRaDutyCycle()
 	if(loRaInitialised())
 	{
 		return transport[loRaTransportId].calculatedDutyCycle;
+	}
+	return 0;
+}
+uint32_t treacleClass::getLoRaDutyCycleExceptions()
+{
+	if(loRaInitialised())
+	{
+		return transport[loRaTransportId].dutyCycleExceptions;
 	}
 	return 0;
 }
@@ -1207,6 +1227,7 @@ bool treacleClass::sendPacketOnTick()
 			}
 			else
 			{
+				transport[transportId].dutyCycleExceptions++;
 				debugPrint(debugString_duty_cycle_exceeded);
 				debugPrint(':');
 				debugPrint(transport[transportId].calculatedDutyCycle);
