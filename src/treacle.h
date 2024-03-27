@@ -10,6 +10,8 @@
 #define treacle_h
 #include <Arduino.h>
 
+//#define TREACLE_DEBUG
+
 #ifdef ESP32
 	#include <WiFi.h>
 	#include <esp_wifi.h> //Only needed for esp_wifi_set_channel()
@@ -335,167 +337,169 @@ class treacleClass	{
 		 *	Debugging helpers
 		 *
 		 */
-		void showStatus();							//Show general status information
 		uint32_t lastStatusMessage = 0;
-		Stream *debug_uart_ = nullptr;				//The stream used for any debugging
-		template <class T>
-		void debugPrint(T thingToPrint)
-		{
-			if(debug_uart_ != nullptr)
+		#if defined(TREACLE_DEBUG)
+			void showStatus();							//Show general status information
+			Stream *debug_uart_ = nullptr;				//The stream used for any debugging
+			template <class T>
+			void debugPrint(T thingToPrint)
 			{
-				debug_uart_->print(thingToPrint);
+				if(debug_uart_ != nullptr)
+				{
+					debug_uart_->print(thingToPrint);
+				}
 			}
-		}
-		template <class T>
-		void debugPrintln(T thingToPrint)
-		{
-			if(debug_uart_ != nullptr)
+			template <class T>
+			void debugPrintln(T thingToPrint)
 			{
-				debug_uart_->println(thingToPrint);
+				if(debug_uart_ != nullptr)
+				{
+					debug_uart_->println(thingToPrint);
+				}
 			}
-		}
-		void debugPrintln()
-		{
-			if(debug_uart_ != nullptr)
+			void debugPrintln()
 			{
-				debug_uart_->println();
+				if(debug_uart_ != nullptr)
+				{
+					debug_uart_->println();
+				}
 			}
-		}
-		const char debugString_treacleSpace[9] PROGMEM = "treacle ";
-		const char debugString_starting[9] PROGMEM = "starting";
-		const char debugString_start[6] PROGMEM = "start";
-		const char debugString_ended[6] PROGMEM = "ended";
-		const char debugString_enablingSpace[10] PROGMEM = "enabling ";
-		const char debugString_checkingSpace[10] PROGMEM = "checking ";
-		const char debugString_initialisingSpace[14] PROGMEM = "initialising ";
-		const char debugString_notInitialised[16] PROGMEM = "not initialised";
-		const char debugString_selectingSpace[11] PROGMEM = "selecting ";
-		const char debugString_OK[3] PROGMEM = "OK";
-		const char debugString_unknown[8] PROGMEM = "unknown";
-		const char debugString_failed[7] PROGMEM = "failed";
-		const char debugString_WiFi[5] PROGMEM = "WiFi";
-		const char debugString_Client[7]  PROGMEM = "Client";
-		const char debugString_AP[3] PROGMEM = "AP";
-		const char debugString_ClientAndAP[12] PROGMEM = "Client & AP";
-		const char debugString_ESPNow[8] PROGMEM = "ESP-Now";
-		const char debugString_channel[8] PROGMEM = "channel";
-		const char debugString_changedSpaceTo[11] PROGMEM = "changed to";
-		const char debugString_WiFiSpacenotSpaceenabled[17] PROGMEM = "WiFi not enabled";
-		const char debugString_LoRa[5] PROGMEM = "LoRa";
-		const char debugString_COBS[5] PROGMEM = "COBS";
-		const char debugString_newSpaceState[10] PROGMEM = "new state";
-		const char debugString_uninitialised[14] PROGMEM = "uninitialised";
-		const char debugString_selectingId[12] PROGMEM = "selectingId";
-		const char debugString_selectedId[11] PROGMEM = "selectedId";
-		const char debugString_online[7] PROGMEM = "online";
-		const char debugString_offline[8] PROGMEM = "offline";
-		const char debugString_stopped[8] PROGMEM = "stopped";
-		const char debugString_nodeId[7] PROGMEM = "nodeId";
-		const char debugString_tick[5] PROGMEM = "tick";
-		const char debugString_keepalive[10] PROGMEM = "keepalive";
-		const char debugString_short_application_data[23] PROGMEM = "short application data";
-		const char debugString_sent[5] PROGMEM = "sent";
-		const char debugString_received[9] PROGMEM = "received";
-		const char debugString_toSpace[4] PROGMEM = "to ";
-		const char debugString_fromSpace[6] PROGMEM = "from ";
-		const char debugString_ActiveSpaceTransports[18] PROGMEM = "active transports";
-		const char debugString_SpaceTransportID[14] PROGMEM = " transport ID";
-		const char debugString_packetSpace[8] PROGMEM = "packet ";
-		const char debugString_dropped[8] PROGMEM = "dropped";
-		const char debugString_addingSpace[8] PROGMEM = "adding ";
-		const char debugString_deletingSpace[10] PROGMEM = "deleting ";
-		const char debugString_peer[5] PROGMEM = "peer";
-		const char debugString_SpacedutySpacecycle[12] PROGMEM = " duty cycle";
-		const char debugString_tooShort[10] PROGMEM = "too short";
-		const char debugString_inconsistent[13] PROGMEM = "inconsistent";
-		const char debugString_bytes[6] PROGMEM = "bytes";
-		const char debugString_SpacenewCommaadded[12] PROGMEM = " new, added";
-		const char debugString__too_many_nodes[16] PROGMEM = " too many nodes";
-		const char debugString_includes[9] PROGMEM = "includes";
-		const char debugString_checksum_invalid[17] PROGMEM = "checksum invalid";
-		const char debugString_this_node[10] PROGMEM = "this node";
-		const char debugString_node_name[10] PROGMEM = "node name";
-		const char debugString_idResolutionRequest[17] PROGMEM = "name->ID request";
-		const char debugString_nameResolutionRequest[17] PROGMEM = "ID->name request";
-		const char debugString_nameResolutionResponse[18] PROGMEM = "ID->name response";
-		const char debugString_looking_up[11] PROGMEM = "looking up";
-		const char debugString_responding[11] PROGMEM = "responding";
-		const char debugString_rxReliability[14] PROGMEM = "rxReliability";
-		const char debugString_txReliability[14] PROGMEM = "txReliability";
-		const char debugString_message[8] PROGMEM = "message";
-		const char debugString_cleared[8] PROGMEM = "cleared";
-		const char debugString_padded_by[10] PROGMEM = "padded by";
-		const char debugString_encrypted[10] PROGMEM = "encrypted";
-		const char debugString_decrypted[10] PROGMEM = "decrypted";
-		const char debugString_encryption_key[15] PROGMEM = "encryption key";
-		const char debugString_duplicate[10] PROGMEM = "duplicate";
-		const char debugString_payload_numberColon[16] PROGMEM = "payload number:";
-		const char debugString_after[6] PROGMEM = "after";
-		const char debugString_minutes[8] PROGMEM = "minutes";
-		const char debugString_expediting_[12] PROGMEM = "expediting ";
-		const char debugString_for[4] PROGMEM = "for";
-		const char debugString_response[9] PROGMEM = "response";
-		const char debugString_all[4] PROGMEM = "all";
-		const char debugString_nodes[6] PROGMEM = "nodes";
-		const char debugString_reached[8] PROGMEM = "reached";
-		const char debugString_with[5] PROGMEM = "with";
-		const char debugString_duty_cycle_exceeded[20] PROGMEM = "duty cycle exceeded";
-		const char debugString_TXcolon[4] PROGMEM = "TX:";
-		const char debugString_TX_drops_colon[10] PROGMEM = "TX drops:";
-		const char debugString_RXcolon[4] PROGMEM = "RX:";
-		const char debugString_RX_drops_colon[10] PROGMEM = "RX drops:";
-		const char debugString_up[3] PROGMEM = "up";
-		
-		void debugPrintTransportName(uint8_t transport)
-		{
-			if(transport == espNowTransportId){debugPrint(debugString_ESPNow);}
-			else if(transport == loRaTransportId){debugPrint(debugString_LoRa);}
-			else if(transport == cobsTransportId){debugPrint(debugString_COBS);}
-		}
-		void debugPrintPayloadTypeDescription(uint8_t type)
-		{
-			if(type & (uint8_t)payloadType::encrypted){debugPrint(debugString_encrypted);debugPrint(' ');}
-			type = type & (0xff ^ (uint8_t)payloadType::encrypted);	//Remove the encrypted flag!
-			if(type == (uint8_t)payloadType::keepalive){debugPrint(debugString_keepalive);}
-			else if(type == (uint8_t)payloadType::idResolutionRequest){debugPrint(debugString_idResolutionRequest);}
-			else if(type == (uint8_t)payloadType::nameResolutionRequest){debugPrint(debugString_nameResolutionRequest);}
-			else if(type == (uint8_t)payloadType::idAndNameResolutionResponse){debugPrint(debugString_nameResolutionResponse);}
-			else if(type == (uint8_t)payloadType::shortApplicationData){debugPrint(debugString_short_application_data);}
-		}
-		void debugPrintState(state theState)
-		{
-			if(theState == state::uninitialised){debugPrint(debugString_uninitialised);}
-			else if(theState == state::starting){debugPrint(debugString_starting);}
-			else if(theState == state::selectingId){debugPrint(debugString_selectingId);}
-			else if(theState == state::selectedId){debugPrint(debugString_selectedId);}
-			else if(theState == state::online){debugPrint(debugString_online);}
-			else if(theState == state::offline){debugPrint(debugString_offline);}
-			else if(theState == state::stopped){debugPrint(debugString_stopped);}
-			else{debugPrint(debugString_unknown);}
-		}
-		void debugPrintString(char* text)
-		{
-			if(text != nullptr)
+			const char debugString_treacleSpace[9] PROGMEM = "treacle ";
+			const char debugString_starting[9] PROGMEM = "starting";
+			const char debugString_start[6] PROGMEM = "start";
+			const char debugString_ended[6] PROGMEM = "ended";
+			const char debugString_enablingSpace[10] PROGMEM = "enabling ";
+			const char debugString_checkingSpace[10] PROGMEM = "checking ";
+			const char debugString_initialisingSpace[14] PROGMEM = "initialising ";
+			const char debugString_notInitialised[16] PROGMEM = "not initialised";
+			const char debugString_selectingSpace[11] PROGMEM = "selecting ";
+			const char debugString_OK[3] PROGMEM = "OK";
+			const char debugString_unknown[8] PROGMEM = "unknown";
+			const char debugString_failed[7] PROGMEM = "failed";
+			const char debugString_WiFi[5] PROGMEM = "WiFi";
+			const char debugString_Client[7]  PROGMEM = "Client";
+			const char debugString_AP[3] PROGMEM = "AP";
+			const char debugString_ClientAndAP[12] PROGMEM = "Client & AP";
+			const char debugString_ESPNow[8] PROGMEM = "ESP-Now";
+			const char debugString_channel[8] PROGMEM = "channel";
+			const char debugString_changedSpaceTo[11] PROGMEM = "changed to";
+			const char debugString_WiFiSpacenotSpaceenabled[17] PROGMEM = "WiFi not enabled";
+			const char debugString_LoRa[5] PROGMEM = "LoRa";
+			const char debugString_COBS[5] PROGMEM = "COBS";
+			const char debugString_newSpaceState[10] PROGMEM = "new state";
+			const char debugString_uninitialised[14] PROGMEM = "uninitialised";
+			const char debugString_selectingId[12] PROGMEM = "selectingId";
+			const char debugString_selectedId[11] PROGMEM = "selectedId";
+			const char debugString_online[7] PROGMEM = "online";
+			const char debugString_offline[8] PROGMEM = "offline";
+			const char debugString_stopped[8] PROGMEM = "stopped";
+			const char debugString_nodeId[7] PROGMEM = "nodeId";
+			const char debugString_tick[5] PROGMEM = "tick";
+			const char debugString_keepalive[10] PROGMEM = "keepalive";
+			const char debugString_short_application_data[23] PROGMEM = "short application data";
+			const char debugString_sent[5] PROGMEM = "sent";
+			const char debugString_received[9] PROGMEM = "received";
+			const char debugString_toSpace[4] PROGMEM = "to ";
+			const char debugString_fromSpace[6] PROGMEM = "from ";
+			const char debugString_ActiveSpaceTransports[18] PROGMEM = "active transports";
+			const char debugString_SpaceTransportID[14] PROGMEM = " transport ID";
+			const char debugString_packetSpace[8] PROGMEM = "packet ";
+			const char debugString_dropped[8] PROGMEM = "dropped";
+			const char debugString_addingSpace[8] PROGMEM = "adding ";
+			const char debugString_deletingSpace[10] PROGMEM = "deleting ";
+			const char debugString_peer[5] PROGMEM = "peer";
+			const char debugString_SpacedutySpacecycle[12] PROGMEM = " duty cycle";
+			const char debugString_tooShort[10] PROGMEM = "too short";
+			const char debugString_inconsistent[13] PROGMEM = "inconsistent";
+			const char debugString_bytes[6] PROGMEM = "bytes";
+			const char debugString_SpacenewCommaadded[12] PROGMEM = " new, added";
+			const char debugString__too_many_nodes[16] PROGMEM = " too many nodes";
+			const char debugString_includes[9] PROGMEM = "includes";
+			const char debugString_checksum_invalid[17] PROGMEM = "checksum invalid";
+			const char debugString_this_node[10] PROGMEM = "this node";
+			const char debugString_node_name[10] PROGMEM = "node name";
+			const char debugString_idResolutionRequest[17] PROGMEM = "name->ID request";
+			const char debugString_nameResolutionRequest[17] PROGMEM = "ID->name request";
+			const char debugString_nameResolutionResponse[18] PROGMEM = "ID->name response";
+			const char debugString_looking_up[11] PROGMEM = "looking up";
+			const char debugString_responding[11] PROGMEM = "responding";
+			const char debugString_rxReliability[14] PROGMEM = "rxReliability";
+			const char debugString_txReliability[14] PROGMEM = "txReliability";
+			const char debugString_message[8] PROGMEM = "message";
+			const char debugString_cleared[8] PROGMEM = "cleared";
+			const char debugString_padded_by[10] PROGMEM = "padded by";
+			const char debugString_encrypted[10] PROGMEM = "encrypted";
+			const char debugString_decrypted[10] PROGMEM = "decrypted";
+			const char debugString_encryption_key[15] PROGMEM = "encryption key";
+			const char debugString_duplicate[10] PROGMEM = "duplicate";
+			const char debugString_payload_numberColon[16] PROGMEM = "payload number:";
+			const char debugString_after[6] PROGMEM = "after";
+			const char debugString_minutes[8] PROGMEM = "minutes";
+			const char debugString_expediting_[12] PROGMEM = "expediting ";
+			const char debugString_for[4] PROGMEM = "for";
+			const char debugString_response[9] PROGMEM = "response";
+			const char debugString_all[4] PROGMEM = "all";
+			const char debugString_nodes[6] PROGMEM = "nodes";
+			const char debugString_reached[8] PROGMEM = "reached";
+			const char debugString_with[5] PROGMEM = "with";
+			const char debugString_duty_cycle_exceeded[20] PROGMEM = "duty cycle exceeded";
+			const char debugString_TXcolon[4] PROGMEM = "TX:";
+			const char debugString_TX_drops_colon[10] PROGMEM = "TX drops:";
+			const char debugString_RXcolon[4] PROGMEM = "RX:";
+			const char debugString_RX_drops_colon[10] PROGMEM = "RX drops:";
+			const char debugString_up[3] PROGMEM = "up";
+			
+			void debugPrintTransportName(uint8_t transport)
 			{
-				debugPrint('"');
-				debugPrint(text);
-				debugPrint('"');
-				debugPrint(' ');
+				if(transport == espNowTransportId){debugPrint(debugString_ESPNow);}
+				else if(transport == loRaTransportId){debugPrint(debugString_LoRa);}
+				else if(transport == cobsTransportId){debugPrint(debugString_COBS);}
 			}
-		}
-		void debugPrintStringln(char* text)
-		{
-			if(text != nullptr)
+			void debugPrintPayloadTypeDescription(uint8_t type)
 			{
-				debugPrint('"');
-				debugPrint(text);
-				debugPrintln('"');
+				if(type & (uint8_t)payloadType::encrypted){debugPrint(debugString_encrypted);debugPrint(' ');}
+				type = type & (0xff ^ (uint8_t)payloadType::encrypted);	//Remove the encrypted flag!
+				if(type == (uint8_t)payloadType::keepalive){debugPrint(debugString_keepalive);}
+				else if(type == (uint8_t)payloadType::idResolutionRequest){debugPrint(debugString_idResolutionRequest);}
+				else if(type == (uint8_t)payloadType::nameResolutionRequest){debugPrint(debugString_nameResolutionRequest);}
+				else if(type == (uint8_t)payloadType::idAndNameResolutionResponse){debugPrint(debugString_nameResolutionResponse);}
+				else if(type == (uint8_t)payloadType::shortApplicationData){debugPrint(debugString_short_application_data);}
 			}
-			else
+			void debugPrintState(state theState)
 			{
-				debugPrintln();
+				if(theState == state::uninitialised){debugPrint(debugString_uninitialised);}
+				else if(theState == state::starting){debugPrint(debugString_starting);}
+				else if(theState == state::selectingId){debugPrint(debugString_selectingId);}
+				else if(theState == state::selectedId){debugPrint(debugString_selectedId);}
+				else if(theState == state::online){debugPrint(debugString_online);}
+				else if(theState == state::offline){debugPrint(debugString_offline);}
+				else if(theState == state::stopped){debugPrint(debugString_stopped);}
+				else{debugPrint(debugString_unknown);}
 			}
-		}
+			void debugPrintString(char* text)
+			{
+				if(text != nullptr)
+				{
+					debugPrint('"');
+					debugPrint(text);
+					debugPrint('"');
+					debugPrint(' ');
+				}
+			}
+			void debugPrintStringln(char* text)
+			{
+				if(text != nullptr)
+				{
+					debugPrint('"');
+					debugPrint(text);
+					debugPrintln('"');
+				}
+				else
+				{
+					debugPrintln();
+				}
+			}
+		#endif
 };
 extern treacleClass treacle;	//Create an instance of the class, as only one is practically usable at a time
 #endif
