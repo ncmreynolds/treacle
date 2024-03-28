@@ -10,7 +10,7 @@
 #define treacle_h
 #include <Arduino.h>
 
-//#define TREACLE_DEBUG
+#define TREACLE_DEBUG
 
 #ifdef ESP32
 	#include <WiFi.h>
@@ -44,6 +44,7 @@ class treacleClass	{
 		void disableEspNowEncryption();				//Disable encryption for ESP-Now
 		bool espNowInitialised();					//Is ESP-Now radio correctly initialised?
 		void setEspNowChannel(uint8_t);				//Set the WiFi channel used for ESP-Now
+		void setEspNowTickInterval(uint16_t tick);	//Set the ESP-Now tick interval
 		uint8_t getEspNowChannel();					//Get the WiFi channel used for ESP-Now
 		uint32_t getEspNowRxPackets();				//Get packet stats
 		uint32_t getEspNowTxPackets();				//Get packet stats
@@ -65,6 +66,7 @@ class treacleClass	{
 		uint32_t getLoRaTxPacketsDropped();			//Get packet stats
 		float getLoRaDutyCycle();					//Get packet stats
 		uint32_t getLoRaDutyCycleExceptions();		//Get packet stats
+		void setLoRaTickInterval(uint16_t tick);	//Set the LoRa tick interval
 		uint16_t getLoRaTickInterval();				//Get time between packets
 		uint8_t getLoRaTxPower();					//LoRa TX power
 		uint8_t getLoRaSpreadingFactor();			//LoRa spreading factor
@@ -72,19 +74,21 @@ class treacleClass	{
 		void setLoRaTxPower(uint8_t);				//LoRa TX power 2-20
 		void setLoRaSpreadingFactor(uint8_t);		//LoRa spreading factor
 		void setLoRaSignalBandwidth(uint32_t);		//Supported values are 7.8E3, 10.4E3, 15.6E3, 20.8E3, 31.25E3, 41.7E3, 62.5E3, 125E3(default), 250E3, and 500E3.
+		void setLoRaRxGain(uint8_t);				//0-6, 0 = auto
 		//COBS/Serial
 		void enableCobs();
 		bool cobsEnabled();
 		bool cobsInitialised();
 		//Messaging
 		bool online();								//Is treacle online? ie. has this node heard back from a peer that has heard it recently
-		bool online(uint8_t);						//Is a specific treacle node online? ie. has this node heard from it recently
 		void goOffline();							//Actively go offline
 		void goOnline();							//Actively go online (if possible and this will take a few seconds)
+		uint8_t nodes();							//Number of nodes
 		uint8_t maxPayloadSize();					//Maximum single packet payload size
 		uint32_t messageWaiting();					//Is there a message waiting?
 		void clearWaitingMessage();					//Trash an incoming message
 		uint8_t messageSender();					//The sender of the waiting message
+		uint32_t suggestedQueueInterval();			//Suggest a delay before the next message
 		bool queueMessage(char*);					//Send a short message
 		bool queueMessage(uint8_t*, uint8_t);		//Send a short message
 		bool queueMessage(const unsigned char*,		//Send a short message
@@ -92,6 +96,15 @@ class treacleClass	{
 		bool retrieveWaitingMessage(uint8_t*);		//Retrieve a message. The buffer must be large enough for it, no checking can be done
 		//Encryption
 		void setEncryptionKey(uint8_t* key);		//Set the encryption key
+		//Node status
+		bool online(uint8_t);						//Is a specific treacle node online? ie. has this node heard from it recently
+		uint32_t rxAge(uint8_t);
+		uint32_t rxReliability(uint8_t);
+		uint32_t txReliability(uint8_t);
+		uint32_t espNowRxReliability(uint8_t);
+		uint32_t espNowTxReliability(uint8_t);
+		uint32_t loRaRxReliability(uint8_t);
+		uint32_t loRaTxReliability(uint8_t);
 		//General
 		void setNodeName(char* name);				//Set the node name
 		void setNodeId(uint8_t id);					//Set the nodeId
@@ -136,7 +149,8 @@ class treacleClass	{
 			float maximumDutyCycle = 1;					//Used as a hard brake on TX if exceeded
 			uint32_t dutyCycleExceptions = 0;			//Count any time it goes over duty cycle
 			uint32_t lastTick;							//Track this node's ticks
-			uint16_t nextTick;							//How long until the next tick for each transport, which is important
+			uint16_t defaultTick;						//Frequency of ticks for each transport, which is important
+			uint16_t nextTick;							//How long until the next tick for each transport, which is important. This varies slightly from the default.
 			uint8_t transmitBuffer[maximumBufferSize];	//General transmit buffer
 			uint8_t transmitPacketSize = 0;				//Current transmit packet size
 			bool bufferSent = true;						//Per transport marker for when something is sent
@@ -315,6 +329,7 @@ class treacleClass	{
 		uint8_t loRaTxPower = 17;					//LoRa TX power
 		uint8_t loRaSpreadingFactor = 9;			//LoRa spreading factor
 		uint32_t loRaSignalBandwidth= 62.5E3;		//Supported values are 7.8E3, 10.4E3, 15.6E3, 20.8E3, 31.25E3, 41.7E3, 62.5E3, 125E3(default), 250E3, and 500E3.
+		uint8_t loRaRxGain = 0;						//0-6, 0 = auto
 		uint8_t loRaSyncWord = 0x12;				//Valid options are 0x12, 0x56, 0x78, don't use 0x34 as that is LoRaWAN
 		float lastLoRaRssi = 0.0;					//Track RSSI as an extra indication of reachability
 		//LoRa specific functions

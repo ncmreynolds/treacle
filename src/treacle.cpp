@@ -293,6 +293,10 @@ bool treacleClass::espNowInitialised()
 	}
 	return false;
 }
+void treacleClass::setEspNowTickInterval(uint16_t tick)
+{
+	transport[espNowTransportId].defaultTick = tick;
+}
 void treacleClass::setEspNowChannel(uint8_t channel)
 {
 	preferredespNowChannel = channel;							//Sets the preferred channel. It will only be used if practical.
@@ -541,6 +545,7 @@ bool treacleClass::initialiseEspNow()
 					) == ESP_OK)
 					{
 						transport[espNowTransportId].initialised = true;
+						transport[espNowTransportId].defaultTick = 10E3;
 						#if defined(TREACLE_DEBUG)
 							debugPrintln(debugString_OK);
 						#endif
@@ -680,12 +685,14 @@ bool treacleClass::initialiseLoRa()
 		LoRa.setTxPower(loRaTxPower);							//Set TX power
 		LoRa.setSpreadingFactor(loRaSpreadingFactor);			//Set spreading factor
 		LoRa.setSignalBandwidth(loRaSignalBandwidth);			//Set badwidth
+		LoRa.setGain(loRaRxGain);
 		LoRa.setSyncWord(loRaSyncWord);							//Set sync word
 		LoRa.enableCrc();										//Enable CRC check
 		#if defined(TREACLE_DEBUG)
 			debugPrintln(debugString_OK);
 		#endif
 		transport[loRaTransportId].initialised = true;			//Mark as initialised
+		transport[loRaTransportId].defaultTick = 45E3;			//Set default tick timer
 		if(loRaIrqPin != -1)									//Callbacks on IRQ pin
 		{
 			LoRa.onTxDone(										//Send callback function
@@ -798,6 +805,10 @@ uint32_t treacleClass::getLoRaDutyCycleExceptions()
 	}
 	return 0;
 }
+void treacleClass::setLoRaTickInterval(uint16_t tick)
+{
+	transport[loRaTransportId].defaultTick = tick;
+}
 uint16_t treacleClass::getLoRaTickInterval()
 {
 	if(loRaInitialised())
@@ -825,6 +836,10 @@ void treacleClass::setLoRaSpreadingFactor(uint8_t value)
 void treacleClass::setLoRaSignalBandwidth(uint32_t value)
 {
 	loRaSignalBandwidth = value;
+}
+void treacleClass::setLoRaRxGain(uint8_t value)
+{
+	loRaRxGain = value;
 }
 uint8_t treacleClass::getLoRaSpreadingFactor()
 {
@@ -936,6 +951,7 @@ bool treacleClass::initialiseCobs()
 		debugPrint(':');
 		debugPrintln(debugString_failed);
 	#endif
+	transport[cobsTransportId].defaultTick = 50E3;			//Set default tick timer
 	return false;
 }
 bool treacleClass::sendBufferByCobs(uint8_t* buffer, uint8_t packetSize)
@@ -1177,40 +1193,7 @@ void treacleClass::setTickTime()
 	if(currentState == state::uninitialised || currentState == state::starting) return;
 	for(uint8_t transportIndex = 0; transportIndex < numberOfActiveTransports; transportIndex++)
 	{
-		if(currentState == state::selectingId)
-		{
-			if(transportIndex == espNowTransportId) transport[transportIndex].nextTick =	10E3 -	tickRandomisation(transportIndex);
-			else if(transportIndex == loRaTransportId) transport[transportIndex].nextTick =	45E3 -	tickRandomisation(transportIndex);
-			else if(transportIndex == cobsTransportId) transport[transportIndex].nextTick =	50E3 -	tickRandomisation(transportIndex);
-		}
-		else if(currentState == state::selectedId)
-		{
-			if(transportIndex == espNowTransportId) transport[transportIndex].nextTick = 	10E3 -	tickRandomisation(transportIndex);
-			else if(transportIndex == loRaTransportId) transport[transportIndex].nextTick =	45E3 -	tickRandomisation(transportIndex);
-			else if(transportIndex == cobsTransportId) transport[transportIndex].nextTick =	50E3 -	tickRandomisation(transportIndex);
-		}
-		else if(currentState == state::online)
-		{
-			if(transportIndex == espNowTransportId) transport[transportIndex].nextTick =	10E3 -	tickRandomisation(transportIndex);
-			else if(transportIndex == loRaTransportId) transport[transportIndex].nextTick =	45E3 -	tickRandomisation(transportIndex);
-			else if(transportIndex == cobsTransportId) transport[transportIndex].nextTick =	50E3 -	tickRandomisation(transportIndex);
-		}
-		else if(currentState == state::offline)
-		{
-			if(transportIndex == espNowTransportId) transport[transportIndex].nextTick =	10E3 -	tickRandomisation(transportIndex);
-			else if(transportIndex == loRaTransportId) transport[transportIndex].nextTick =	45E3 -	tickRandomisation(transportIndex);
-			else if(transportIndex == cobsTransportId) transport[transportIndex].nextTick =	50E3 -	tickRandomisation(transportIndex);
-		}
-		else if(currentState == state::stopped)
-		{
-			transport[transportIndex].nextTick =									0;		//Never send
-		}
-		else
-		{
-			if(transportIndex == espNowTransportId) transport[transportIndex].nextTick =	maximumTickTime -	tickRandomisation(transportIndex);
-			else if(transportIndex == loRaTransportId) transport[transportIndex].nextTick =	maximumTickTime -	tickRandomisation(transportIndex);
-			else if(transportIndex == cobsTransportId) transport[transportIndex].nextTick =	maximumTickTime -	tickRandomisation(transportIndex);
-		}
+		transport[transportIndex].nextTick = transport[transportIndex].defaultTick - tickRandomisation(transportIndex);
 	}
 }
 uint16_t treacleClass::tickRandomisation(uint8_t transportId)
@@ -1521,7 +1504,7 @@ void treacleClass::unpackPacket()
 					debugPrint(':');
 					debugPrint(senderId);
 				#endif
-				if(senderId != 0 && receiveBuffer[(uint8_t)headerPosition::sender] != 255)	//Only handle valid node IDs
+				if(senderId != (uint8_t)nodeId::unknownNode && receiveBuffer[(uint8_t)headerPosition::sender] != (uint8_t)nodeId::allNodes)	//Only handle valid node IDs
 				{
 					if(nodeExists(receiveBuffer[(uint8_t)headerPosition::sender]) == false)		//Check if it doesn't exist
 					{
@@ -1689,17 +1672,20 @@ void treacleClass::unpackKeepalivePacket(uint8_t transportId, uint8_t senderId)
 			{
 				if(nodeExists(receiveBuffer[bufferIndex]) == false)
 				{
-					if(addNode(receiveBuffer[bufferIndex], receivedTxReliabilityMetric))	//Use txReliability from the other node as a best guess starting point
+					if(receiveBuffer[bufferIndex] != (uint8_t)nodeId::unknownNode && receiveBuffer[bufferIndex] != (uint8_t)nodeId::allNodes)
 					{
-						#if defined(TREACLE_DEBUG)
-							debugPrintln(debugString_SpacenewCommaadded);
-						#endif
-					}
-					else	//Abandon process, there are already the maximum number of nodes
-					{
-						#if defined(TREACLE_DEBUG)
-							debugPrintln(debugString__too_many_nodes);
-						#endif
+						if(addNode(receiveBuffer[bufferIndex], receivedTxReliabilityMetric))	//Use txReliability from the other node as a best guess starting point
+						{
+							#if defined(TREACLE_DEBUG)
+								debugPrintln(debugString_SpacenewCommaadded);
+							#endif
+						}
+						else	//Abandon process, there are already the maximum number of nodes
+						{
+							#if defined(TREACLE_DEBUG)
+								debugPrintln(debugString__too_many_nodes);
+							#endif
+						}
 					}
 				}
 				else
@@ -1949,7 +1935,7 @@ bool treacleClass::addNode(uint8_t id, uint16_t reliability)
 		node[numberOfNodes].lastPayloadNumber = new uint8_t[numberOfActiveTransports];	//This is per transport
 		for(uint8_t transportIndex = 0; transportIndex < numberOfActiveTransports; transportIndex++)
 		{
-			node[numberOfNodes].lastTick[transportIndex] = millis();							//Count the addition of the node as a 'tick'
+			node[numberOfNodes].lastTick[transportIndex] = millis();						//Count the addition of the node as a 'tick'
 			node[numberOfNodes].nextTick[transportIndex] = maximumTickTime;					//Don't time it out until it's genuinely missed a 'tick'
 			node[numberOfNodes].rxReliability[transportIndex] = reliability;
 			node[numberOfNodes].txReliability[transportIndex] = reliability;
@@ -1977,19 +1963,111 @@ void treacleClass::calculateDutyCycle()
 		//transport[transportIndex].calculatedDutyCycle = ((float)transport[transportIndex].txTime/(float)millis())/10.0;	//txTime is in micros so divided by 1000 to get percentage
 	}
 }
-
+/*
+ *
+ *	Node status functions
+ *
+ */
+bool treacleClass::online(uint8_t id)
+{
+	uint8_t nodeIndex = nodeIndexFromId(id);
+	if(nodeIndex != maximumNumberOfNodes)
+	{
+		for(uint8_t transportIndex = 0; transportIndex < numberOfActiveTransports; transportIndex++)
+		{
+			if(node[nodeIndex].rxReliability[transportIndex] > 0)
+			{
+				return true;
+			}
+		}
+	}
+	return false;
+}
+uint32_t treacleClass::rxAge(uint8_t id)
+{
+	uint8_t nodeIndex = nodeIndexFromId(id);
+	if(nodeIndex != maximumNumberOfNodes)
+	{
+		uint32_t latestTick = 0;
+		for(uint8_t transportIndex = 0; transportIndex < numberOfActiveTransports; transportIndex++)
+		{
+			if(node[nodeIndex].lastTick[transportIndex] > latestTick)
+			{
+				latestTick = node[nodeIndex].lastTick[transportIndex];
+			}
+		}
+		return millis() - latestTick;
+	}
+	return 0;
+}
+uint32_t treacleClass::rxReliability(uint8_t id)
+{
+	return max(espNowRxReliability(id), loRaRxReliability(id));
+}
+uint32_t treacleClass::txReliability(uint8_t id)
+{
+	return max(espNowTxReliability(id), loRaTxReliability(id));
+}
+uint32_t treacleClass::espNowRxReliability(uint8_t id)
+{
+	if(espNowInitialised())
+	{
+		uint8_t nodeIndex = nodeIndexFromId(id);
+		if(nodeIndex != maximumNumberOfNodes)
+		{
+			return node[nodeIndex].rxReliability[espNowTransportId];
+		}
+	}
+	return 0;
+}
+uint32_t treacleClass::espNowTxReliability(uint8_t id)
+{
+	if(espNowInitialised())
+	{
+		uint8_t nodeIndex = nodeIndexFromId(id);
+		if(nodeIndex != maximumNumberOfNodes)
+		{
+			return node[nodeIndex].txReliability[espNowTransportId];
+		}
+	}
+	return 0;
+}
+uint32_t treacleClass::loRaRxReliability(uint8_t id)
+{
+	if(loRaInitialised())
+	{
+		uint8_t nodeIndex = nodeIndexFromId(id);
+		if(nodeIndex != maximumNumberOfNodes)
+		{
+			return node[nodeIndex].rxReliability[loRaTransportId];
+		}
+	}
+	return 0;
+}
+uint32_t treacleClass::loRaTxReliability(uint8_t id)
+{
+	if(loRaInitialised())
+	{
+		uint8_t nodeIndex = nodeIndexFromId(id);
+		if(nodeIndex != maximumNumberOfNodes)
+		{
+			return node[nodeIndex].txReliability[loRaTransportId];
+		}
+	}
+	return 0;
+}
 /*
  *
  *	Messaging functions
  *
  */ 
+uint8_t treacleClass::nodes()
+{
+	return numberOfNodes;
+}
 bool treacleClass::online()
 {
 	return currentState == state::online;
-}
-bool treacleClass::online(uint8_t)
-{
-	return false;
 }
 void goOffline()
 {
@@ -2076,9 +2154,36 @@ void treacleClass::clearWaitingMessage()
 		debugPrintln(debugString_cleared);
 	#endif
 }
+uint32_t treacleClass::suggestedQueueInterval()
+{
+	bool nodeReached[numberOfNodes] = {};	//Used to track which nodes _should_ have been reached, in transport priority order and avoid sending using lower priority transports, if possible
+	uint8_t numberOfNodesReached = 0;
+	for (uint8_t transportId = 0; transportId < numberOfActiveTransports; transportId++)
+	{
+		if(transport[transportId].initialised == true)	//It's initialised
+		{
+			for(uint8_t nodeIndex = 0; nodeIndex < numberOfNodes; nodeIndex++)
+			{
+				if(nodeReached[nodeIndex] == false)
+				{
+					if(node[nodeIndex].txReliability[transportId] > 0xf000)	//This node is PROBABLY reachable on this transport!
+					{
+						nodeReached[nodeIndex] = true;
+						numberOfNodesReached++;
+					}
+				}
+			}
+		}
+		if(numberOfNodesReached == numberOfNodes)
+		{
+			return transport[transportId].nextTick * 2;
+		}
+	}
+	return maximumTickTime * 2;
+}
 uint8_t treacleClass::messageSender()
 {
-	return 0;
+	return receiveBuffer[(uint8_t)headerPosition::sender];
 }
 bool treacleClass::queueMessage(char* data)
 {
@@ -2120,7 +2225,7 @@ bool treacleClass::queueMessage(uint8_t* data, uint8_t length)
 					{
 						if(node[nodeIndex].txReliability[transportId] > 0xff00)	//This node is PROBABLY reachable on this transport!
 						{
-							nodeReached[nodeIndex] == true;
+							nodeReached[nodeIndex] = true;
 							numberOfNodesReached++;
 							/*
 							if(nodeUnreachable == true)
