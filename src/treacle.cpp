@@ -52,7 +52,7 @@ bool treacleClass::begin(uint8_t maxNodes)
 {
 	//The maximum number of nodes is used in creating a load of data structures
 	//maximumNumberOfNodes = maxNodes;
-	//node = new nodeInfo[maximumNumberOfNodes];	//Assign at start
+	node = new nodeInfo[maximumNumberOfNodes];	//Assign at start
 	//The name is important so assign one if it is not set. This is based off MAC address on ESP32
 	if(currentNodeName == nullptr)
 	{
@@ -813,6 +813,18 @@ uint8_t treacleClass::getLoRaTxPower()
 		return loRaTxPower;
 	}
 	return 0;
+}
+void treacleClass::setLoRaTxPower(uint8_t value)
+{
+	loRaTxPower = value;
+}
+void treacleClass::setLoRaSpreadingFactor(uint8_t value)
+{
+	loRaSpreadingFactor = value;
+}
+void treacleClass::setLoRaSignalBandwidth(uint32_t value)
+{
+	loRaSignalBandwidth = value;
 }
 uint8_t treacleClass::getLoRaSpreadingFactor()
 {

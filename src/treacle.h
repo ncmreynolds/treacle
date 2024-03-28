@@ -69,6 +69,9 @@ class treacleClass	{
 		uint8_t getLoRaTxPower();					//LoRa TX power
 		uint8_t getLoRaSpreadingFactor();			//LoRa spreading factor
 		uint32_t getLoRaSignalBandwidth();			//Supported values are 7.8E3, 10.4E3, 15.6E3, 20.8E3, 31.25E3, 41.7E3, 62.5E3, 125E3(default), 250E3, and 500E3.
+		void setLoRaTxPower(uint8_t);				//LoRa TX power 2-20
+		void setLoRaSpreadingFactor(uint8_t);		//LoRa spreading factor
+		void setLoRaSignalBandwidth(uint32_t);		//Supported values are 7.8E3, 10.4E3, 15.6E3, 20.8E3, 31.25E3, 41.7E3, 62.5E3, 125E3(default), 250E3, and 500E3.
 		//COBS/Serial
 		void enableCobs();
 		bool cobsEnabled();
@@ -156,8 +159,8 @@ class treacleClass	{
 			uint16_t* rxReliability = nullptr;		//This is per transport
 			uint8_t* lastPayloadNumber = nullptr;	//This is per transport
 		};
-		nodeInfo node[maximumNumberOfNodes];		//Chunky struct could overwhelm a small microcontroller, so be careful
-		//nodeInfo* node;							//Chunky struct could overwhelm a small microcontroller, so be careful
+		//nodeInfo node[maximumNumberOfNodes];		//Chunky struct could overwhelm a small microcontroller, so be careful
+		nodeInfo* node;							//Chunky struct could overwhelm a small microcontroller, so be careful
 		//Node management functions
 		bool nodeExists(uint8_t id);				//Check if a node ID exists
 		uint8_t nodeIndexFromId(uint8_t id);		//Get an index into nodeInfo from a node ID
