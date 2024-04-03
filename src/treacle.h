@@ -115,6 +115,8 @@ class treacleClass	{
 		uint32_t espNowTxReliability(uint8_t);
 		uint32_t loRaRxReliability(uint8_t);
 		uint32_t loRaTxReliability(uint8_t);
+		int16_t  loRaRSSI(uint8_t);
+		float    loRaSNR(uint8_t);
 		//General
 		void setNodeName(char* name);				//Set the node name
 		void setNodeId(uint8_t id);					//Set the nodeId
@@ -195,6 +197,8 @@ class treacleClass	{
 			uint8_t* lastPayloadNumber = nullptr;		//This is per transport
 		};
 		nodeInfo* node;									//Chunky struct could overwhelm a small microcontroller, so be careful with maxNodes
+		int16_t* rssi;									//Store last RSSI for each node
+		float* snr;									//Store last SNR for each node
 		//Node management functions
 		bool nodeExists(uint8_t id);					//Check if a node ID exists
 		uint8_t nodeIndexFromId(uint8_t id);			//Get an index into nodeInfo from a node ID
@@ -340,7 +344,8 @@ class treacleClass	{
 		uint32_t loRaSignalBandwidth= 62.5E3;			//Supported values are 7.8E3, 10.4E3, 15.6E3, 20.8E3, 31.25E3, 41.7E3, 62.5E3, 125E3(default), 250E3, and 500E3.
 		uint8_t loRaRxGain = 0;							//0-6, 0 = auto
 		uint8_t loRaSyncWord = 0x12;					//Valid options are 0x12, 0x56, 0x78, don't use 0x34 as that is LoRaWAN
-		float lastLoRaRssi = 0.0;						//Track RSSI as an extra indication of reachability
+		int16_t lastLoRaRssi = 0;						//Track RSSI as an extra indication of reachability
+		float lastLoRaSNR = 0;							//Track SNR as an extra indication of reachability
 		//LoRa specific functions
 		bool initialiseLoRa();							//Initialise LoRa and return result
 		bool sendBufferByLoRa(uint8_t*,					//Send a buffer using ESP-Now

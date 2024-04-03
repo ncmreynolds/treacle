@@ -122,6 +122,16 @@ bool treacleClass::begin(uint8_t maxNodes)
 			else if(transportIndex == loRaTransportId)
 			{
 				transport[transportIndex].initialised = initialiseLoRa();
+				if(transport[transportIndex].initialised)
+				{
+					rssi = new int16_t[maximumNumberOfNodes];	//Storage for RSSI values
+					snr = new float[maximumNumberOfNodes];		//Storage for RSSI values
+					for(uint8_t index = 0; index < maximumNumberOfNodes; index++)
+					{
+						rssi[index] = 0;
+						snr[index] = 0;
+					}
+				}
 			}
 			else if(transportIndex == cobsTransportId)
 			{
@@ -906,6 +916,8 @@ bool treacleClass::receiveLoRa()
 			if(LoRa.peek() == (uint8_t)nodeId::allNodes ||
 				LoRa.peek() == currentNodeId)							//Packet is meaningful to this node
 			{
+				lastLoRaRssi = LoRa.packetRssi();						//Record RSSI and SNR
+				lastLoRaSNR = LoRa.packetSnr();
 				LoRa.readBytes(receiveBuffer, receivedMessageLength);	//Copy the LoRa payload
 				receiveBufferSize = receivedMessageLength;				//Record the amount of payload
 				receiveBufferCrcChecked = false;						//Mark the payload as unchecked
@@ -1535,6 +1547,11 @@ void treacleClass::unpackPacket()
 						debugPrint(' ');
 					#endif
 					uint8_t nodeIndex = nodeIndexFromId(receiveBuffer[(uint8_t)headerPosition::sender]);								//Turn node ID into nodeIndex
+					if(receiveTransport == loRaTransportId)
+					{
+						rssi[nodeIndex] = lastLoRaRssi;																					//Record RSSI if it's a LoRa packet
+						snr[nodeIndex] = lastLoRaSNR;																					//Record SNR if it's a LoRa packet
+					}
 					#if defined(TREACLE_DEBUG)
 						debugPrintString(node[nodeIndex].name);
 					#endif
@@ -2019,6 +2036,30 @@ uint32_t treacleClass::rxReliability(uint8_t id)
 uint32_t treacleClass::txReliability(uint8_t id)
 {
 	return max(espNowTxReliability(id), loRaTxReliability(id));
+}
+int16_t treacleClass::loRaRSSI(uint8_t id)
+{
+	if(loRaInitialised())
+	{
+		uint8_t nodeIndex = nodeIndexFromId(id);
+		if(nodeIndex != maximumNumberOfNodes)
+		{
+			return rssi[nodeIndex];
+		}
+	}
+	return 0;
+}
+float treacleClass::loRaSNR(uint8_t id)
+{
+	if(loRaInitialised())
+	{
+		uint8_t nodeIndex = nodeIndexFromId(id);
+		if(nodeIndex != maximumNumberOfNodes)
+		{
+			return snr[nodeIndex];
+		}
+	}
+	return 0;
 }
 uint32_t treacleClass::espNowRxReliability(uint8_t id)
 {
