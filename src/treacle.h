@@ -217,7 +217,7 @@ class treacleClass	{
 		uint32_t lastDutyCycleCheck = 0;				//Time of last duty cycle check
 		uint32_t dutyCycleCheckInterval = 1E3;			//Check duty cycle every 1s
 		void calculateDutyCycle(uint8_t);				//Calculate the duty cycle for a specific transport based off current txTime
-		void calculateDutyCycle();						//Calculate the duty cycle based off current txTime
+		//void calculateDutyCycle();						//Calculate the duty cycle based off current txTime
 		
 		//Receive packet buffers
 		uint8_t receiveBuffer[maximumBufferSize];		//General receive buffer

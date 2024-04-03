@@ -317,11 +317,31 @@ uint8_t treacleClass::getEspNowChannel()
 }
 bool treacleClass::enableEspNowLrMode()
 {
-	return esp_wifi_set_protocol( WIFI_IF_STA, WIFI_PROTOCOL_LR ) == ESP_OK;
+	if(WiFi.getMode() == WIFI_STA)
+	{
+		return esp_wifi_set_protocol( WIFI_IF_STA, WIFI_PROTOCOL_LR ) == ESP_OK;
+	}
+	else
+	/*
+	else if(WiFi.getMode() == WIFI_AP)
+	{
+	}
+	else if(WiFi.getMode() == WIFI_AP_STA)
+	*/
+	{
+		return esp_wifi_set_protocol( WIFI_IF_AP, WIFI_PROTOCOL_LR ) == ESP_OK;
+	}
 }
 bool treacleClass::enableEspNow11bMode()
 {
-	return esp_wifi_set_protocol( WIFI_IF_STA, WIFI_PROTOCOL_11B ) == ESP_OK;
+	if(WiFi.getMode() == WIFI_STA)
+	{
+		return esp_wifi_set_protocol( WIFI_IF_STA, WIFI_PROTOCOL_11B ) == ESP_OK;
+	}
+	else
+	{
+		return esp_wifi_set_protocol( WIFI_IF_AP, WIFI_PROTOCOL_11B ) == ESP_OK;
+	}
 }
 
 uint32_t treacleClass::getEspNowRxPackets()
@@ -1981,6 +2001,7 @@ void treacleClass::calculateDutyCycle(uint8_t transportId)
 {
 	transport[transportId].calculatedDutyCycle = ((float)transport[transportId].txTime/(float)millis())/10.0;	//txTime is in micros so divided by 1000 to get percentage
 }
+/*
 void treacleClass::calculateDutyCycle()
 {
 	for(uint8_t transportIndex = 0; transportIndex < numberOfActiveTransports; transportIndex++)	//This does not cope with counter rollover!
@@ -1989,6 +2010,7 @@ void treacleClass::calculateDutyCycle()
 		//transport[transportIndex].calculatedDutyCycle = ((float)transport[transportIndex].txTime/(float)millis())/10.0;	//txTime is in micros so divided by 1000 to get percentage
 	}
 }
+*/
 /*
  *
  *	Node status functions
