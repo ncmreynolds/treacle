@@ -480,6 +480,7 @@ class treacleClass	{
 			const char debugString_RXcolon[4] PROGMEM = "RX:";
 			const char debugString_RX_drops_colon[10] PROGMEM = "RX drops:";
 			const char debugString_up[3] PROGMEM = "up";
+			const char debugString_suggested_interval[19] PROGMEM = "suggested interval";
 			
 			void debugPrintTransportName(uint8_t transport)
 			{

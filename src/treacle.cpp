@@ -2265,27 +2265,55 @@ uint32_t treacleClass::suggestedQueueInterval()
 {
 	bool nodeReached[numberOfNodes] = {};	//Used to track which nodes _should_ have been reached, in transport priority order and avoid sending using lower priority transports, if possible
 	uint8_t numberOfNodesReached = 0;
-	for (uint8_t transportId = 0; transportId < numberOfActiveTransports; transportId++)
+	if(numberOfActiveTransports > 1)
 	{
-		if(transport[transportId].initialised == true)	//It's initialised
+		for (uint8_t transportId = 0; transportId < numberOfActiveTransports; transportId++)
 		{
-			for(uint8_t nodeIndex = 0; nodeIndex < numberOfNodes; nodeIndex++)
+			if(transport[transportId].initialised == true)	//It's initialised
 			{
-				if(nodeReached[nodeIndex] == false)
+				for(uint8_t nodeIndex = 0; nodeIndex < numberOfNodes; nodeIndex++)
 				{
-					if(node[nodeIndex].txReliability[transportId] > 0xf000)	//This node is PROBABLY reachable on this transport!
+					if(nodeReached[nodeIndex] == false)
 					{
-						nodeReached[nodeIndex] = true;
-						numberOfNodesReached++;
+						if(node[nodeIndex].txReliability[transportId] > 0xf000)	//This node is PROBABLY reachable on this transport!
+						{
+							nodeReached[nodeIndex] = true;
+							numberOfNodesReached++;
+						}
 					}
 				}
 			}
-		}
-		if(numberOfNodesReached == numberOfNodes)
-		{
-			return transport[transportId].nextTick * 2;
+			if(numberOfNodesReached == numberOfNodes)
+			{
+				#if defined(TREACLE_DEBUG)
+					debugPrint(debugString_treacleSpace);
+					debugPrint(debugString_suggested_interval);
+					debugPrint(' ');
+					debugPrint((transport[transportId].nextTick * 2)/1000);
+					debugPrintln('s');
+				#endif
+				return transport[transportId].nextTick * 2;
+			}
 		}
 	}
+	else if(numberOfActiveTransports == 1)
+	{
+		#if defined(TREACLE_DEBUG)
+			debugPrint(debugString_treacleSpace);
+			debugPrint(debugString_suggested_interval);
+			debugPrint(' ');
+			debugPrint((transport[0].nextTick * 2)/1000);
+			debugPrintln('s');
+		#endif
+		return transport[0].nextTick * 2;
+	}
+	#if defined(TREACLE_DEBUG)
+		debugPrint(debugString_treacleSpace);
+		debugPrint(debugString_suggested_interval);
+		debugPrint(' ');
+		debugPrint((maximumTickTime * 2)/1000);
+		debugPrintln('s');
+	#endif
 	return maximumTickTime * 2;
 }
 uint8_t treacleClass::messageSender()
