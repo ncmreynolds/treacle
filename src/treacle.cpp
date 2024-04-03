@@ -2053,11 +2053,43 @@ uint32_t treacleClass::rxAge(uint8_t id)
 }
 uint32_t treacleClass::rxReliability(uint8_t id)
 {
-	return max(espNowRxReliability(id), loRaRxReliability(id));
+	uint8_t nodeIndex = nodeIndexFromId(id);
+	if(nodeIndex != maximumNumberOfNodes)
+	{
+		if(espNowInitialised() == true)
+		{
+			if(loRaInitialised() == true)
+			{
+				return max(node[nodeIndex].rxReliability[espNowTransportId], node[nodeIndex].rxReliability[loRaTransportId]);
+			}
+			return node[nodeIndex].rxReliability[espNowTransportId];
+		}
+		else if(loRaInitialised() == true)
+		{
+			return node[nodeIndex].rxReliability[loRaTransportId];
+		}
+	}
+	return 0;
 }
 uint32_t treacleClass::txReliability(uint8_t id)
 {
-	return max(espNowTxReliability(id), loRaTxReliability(id));
+	uint8_t nodeIndex = nodeIndexFromId(id);
+	if(nodeIndex != maximumNumberOfNodes)
+	{
+		if(espNowInitialised() == true)
+		{
+			if(loRaInitialised() == true)
+			{
+				return max(node[nodeIndex].txReliability[espNowTransportId], node[nodeIndex].txReliability[loRaTransportId]);
+			}
+			return node[nodeIndex].txReliability[espNowTransportId];
+		}
+		else if(loRaInitialised() == true)
+		{
+			return node[nodeIndex].txReliability[loRaTransportId];
+		}
+	}
+	return 0;
 }
 int16_t treacleClass::loRaRSSI(uint8_t id)
 {
