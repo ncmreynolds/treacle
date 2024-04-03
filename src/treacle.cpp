@@ -51,7 +51,7 @@ uint8_t treacleClass::getNodeId()
 bool treacleClass::begin(uint8_t maxNodes)
 {
 	//The maximum number of nodes is used in creating a load of data structures
-	//maximumNumberOfNodes = maxNodes;
+	maximumNumberOfNodes = maxNodes;
 	node = new nodeInfo[maximumNumberOfNodes];	//Assign at start
 	//The name is important so assign one if it is not set. This is based off MAC address on ESP32
 	if(currentNodeName == nullptr)
@@ -111,7 +111,6 @@ bool treacleClass::begin(uint8_t maxNodes)
 	if(numberOfActiveTransports > 0)
 	{
 		transport = new transportData[numberOfActiveTransports];
-		
 		//Initialise all the transports
 		uint8_t numberOfInitialisedTransports = 0;
 		for(uint8_t transportIndex = 0; transportIndex < numberOfActiveTransports; transportIndex++)	//Initialise every transport that is enabled
@@ -167,6 +166,7 @@ bool treacleClass::begin(uint8_t maxNodes)
 			{
 				changeCurrentState(state::selectedId);
 			}
+			setTickTime();	//Set initial tick times
 			return true;
 		}
 	}
@@ -305,6 +305,15 @@ uint8_t treacleClass::getEspNowChannel()
 {
 	return currentEspNowChannel;								//Gets the current channel
 }
+bool treacleClass::enableEspNowLrMode()
+{
+	return esp_wifi_set_protocol( WIFI_IF_STA, WIFI_PROTOCOL_LR ) == ESP_OK;
+}
+bool treacleClass::enableEspNow11bMode()
+{
+	return esp_wifi_set_protocol( WIFI_IF_STA, WIFI_PROTOCOL_11B ) == ESP_OK;
+}
+
 uint32_t treacleClass::getEspNowRxPackets()
 {
 	if(espNowInitialised())
@@ -545,7 +554,7 @@ bool treacleClass::initialiseEspNow()
 					) == ESP_OK)
 					{
 						transport[espNowTransportId].initialised = true;
-						transport[espNowTransportId].defaultTick = 10E3;
+						transport[espNowTransportId].defaultTick = maximumTickTime/5;
 						#if defined(TREACLE_DEBUG)
 							debugPrintln(debugString_OK);
 						#endif
@@ -692,7 +701,7 @@ bool treacleClass::initialiseLoRa()
 			debugPrintln(debugString_OK);
 		#endif
 		transport[loRaTransportId].initialised = true;			//Mark as initialised
-		transport[loRaTransportId].defaultTick = 45E3;			//Set default tick timer
+		transport[loRaTransportId].defaultTick =maximumTickTime;//Set default tick timer
 		if(loRaIrqPin != -1)									//Callbacks on IRQ pin
 		{
 			LoRa.onTxDone(										//Send callback function
@@ -951,7 +960,7 @@ bool treacleClass::initialiseCobs()
 		debugPrint(':');
 		debugPrintln(debugString_failed);
 	#endif
-	transport[cobsTransportId].defaultTick = 50E3;			//Set default tick timer
+	transport[cobsTransportId].defaultTick = maximumTickTime - 10;	//Set default tick timer
 	return false;
 }
 bool treacleClass::sendBufferByCobs(uint8_t* buffer, uint8_t packetSize)
@@ -1190,7 +1199,6 @@ uint16_t treacleClass::minimumTickTime(uint8_t transportId)
 }
 void treacleClass::setTickTime()
 {
-	if(currentState == state::uninitialised || currentState == state::starting) return;
 	for(uint8_t transportIndex = 0; transportIndex < numberOfActiveTransports; transportIndex++)
 	{
 		transport[transportIndex].nextTick = transport[transportIndex].defaultTick - tickRandomisation(transportIndex);
@@ -1553,6 +1561,7 @@ void treacleClass::unpackPacket()
 							debugPrint('%');
 						#endif
 					}
+					node[nodeIndex].lastSeen = millis();	//Overall last seen
 					node[nodeIndex].rxReliability[receiveTransport] = (node[nodeIndex].rxReliability[receiveTransport] >> 1) | 0x8000;	//Potentially improve rxReliability
 					node[nodeIndex].lastTick[receiveTransport] = millis();															//Update last tick time
 					node[nodeIndex].nextTick[receiveTransport] = ((uint16_t)receiveBuffer[(uint8_t)headerPosition::nextTick])<<8;	//Update next tick time MSB
@@ -1988,6 +1997,8 @@ uint32_t treacleClass::rxAge(uint8_t id)
 	uint8_t nodeIndex = nodeIndexFromId(id);
 	if(nodeIndex != maximumNumberOfNodes)
 	{
+		return millis() - node[nodeIndex].lastSeen;
+		/*
 		uint32_t latestTick = 0;
 		for(uint8_t transportIndex = 0; transportIndex < numberOfActiveTransports; transportIndex++)
 		{
@@ -1997,6 +2008,7 @@ uint32_t treacleClass::rxAge(uint8_t id)
 			}
 		}
 		return millis() - latestTick;
+		*/
 	}
 	return 0;
 }

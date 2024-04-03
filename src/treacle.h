@@ -40,6 +40,8 @@ class treacleClass	{
 		//ESP-Now
 		void enableEspNow();						//Enable the ESP-Now radio
 		bool espNowEnabled();						//Is ESP-Now radio enabled?
+		bool enableEspNow11bMode();
+		bool enableEspNowLrMode();
 		void enableEspNowEncryption();				//Enable encryption for ESP-Now
 		void disableEspNowEncryption();				//Disable encryption for ESP-Now
 		bool espNowInitialised();					//Is ESP-Now radio correctly initialised?
@@ -75,6 +77,14 @@ class treacleClass	{
 		void setLoRaSpreadingFactor(uint8_t);		//LoRa spreading factor
 		void setLoRaSignalBandwidth(uint32_t);		//Supported values are 7.8E3, 10.4E3, 15.6E3, 20.8E3, 31.25E3, 41.7E3, 62.5E3, 125E3(default), 250E3, and 500E3.
 		void setLoRaRxGain(uint8_t);				//0-6, 0 = auto
+		//MQTT
+		void enableMQTT();							//Enable MQTT
+		bool MQTTEnabled();							//Is MQTT enabled?
+		void setMQTTserver(char*);
+		void setMQTTport(uint16_t);
+		void setMQTTusername(char*);
+		void setMQTTpassword(char*);
+		bool MQTTinitialised();						//Is MQTT correctly initialised?
 		//COBS/Serial
 		void enableCobs();
 		bool cobsEnabled();
@@ -109,31 +119,41 @@ class treacleClass	{
 		void setNodeName(char* name);				//Set the node name
 		void setNodeId(uint8_t id);					//Set the nodeId
 		uint8_t getNodeId();						//Get the nodeId, which may have been autonegotiated
-		bool begin(uint8_t maxNodes = 80);			//Start treacle, optionally specify a max number of nodes
+		bool begin(uint8_t maxNodes = 8);			//Start treacle, optionally specify a max number of nodes
 		void end();									//Stop treacle
 		void enableDebug(Stream &);					//Start debugging on a stream
 		void disableDebug();						//Stop debugging
 	protected:
 	private:
 		//State machine
-		enum class state : uint8_t {uninitialised,	//State tracking
+		enum class state : uint8_t {uninitialised,		//State tracking
 			starting,
 			selectingId,
 			selectedId,
 			online,
 			offline,
 			stopped};
-		state currentState = state::uninitialised;	//Current state
-		uint32_t lastStateChange = 0;				//Track time of state changes
-		void changeCurrentState(state);				//Change state and track the time of change
+		state currentState = state::uninitialised;		//Current state
+		uint32_t lastStateChange = 0;					//Track time of state changes
+		void changeCurrentState(state);					//Change state and track the time of change
 		
 		//Transport information
-		uint8_t numberOfActiveTransports = 0;		//Used to track transport IDs
+		uint8_t numberOfActiveTransports = 0;			//Used to track transport IDs
 
 		//Transmit packet buffers
-		static const uint8_t maximumBufferSize= 250;//Maximum buffer size, which is based off ESP-Now max size
-		static const uint8_t maximumPayloadSize=238;//Maximum application payload size, which is based off ESP-Now max size
+		static const uint8_t maximumBufferSize= 250;	//Maximum buffer size, which is based off ESP-Now max size
+		static const uint8_t maximumPayloadSize = 238;	//Maximum application payload size, which is based off ESP-Now max size
 		
+		//Ticks
+		static const uint16_t maximumTickTime = 65E3;	//Absolute longest time something can be scheduled in the future
+		//Tick functions
+		uint16_t minimumTickTime(uint8_t);				//Absolute minimum tick time
+		void setTickTime();								//Set a new tick time whenever something happens
+		uint16_t tickRandomisation(uint8_t);			//Random factor for timing
+		void bringForwardNextTick();					//Hurry up the tick time for urgent things
+		bool sendPacketOnTick();						//Send a single packet if it is due, returns true if this happens
+		void timeOutTicks();							//Potentially time out ticks from other nodes if they stop responding
+
 		struct transportData
 		{
 			bool initialised = false;					//Has the transport initialised OK?
@@ -148,68 +168,68 @@ class treacleClass	{
 			float calculatedDutyCycle = 0;				//Calculated from txTime and millis()
 			float maximumDutyCycle = 1;					//Used as a hard brake on TX if exceeded
 			uint32_t dutyCycleExceptions = 0;			//Count any time it goes over duty cycle
-			uint32_t lastTick;							//Track this node's ticks
-			uint16_t defaultTick;						//Frequency of ticks for each transport, which is important
-			uint16_t nextTick;							//How long until the next tick for each transport, which is important. This varies slightly from the default.
+			uint32_t lastTick = 0;						//Track this node's ticks
+			uint16_t defaultTick = maximumTickTime;		//Frequency of ticks for each transport, which is important
+			uint16_t nextTick = 0;						//How long until the next tick for each transport, which is important. This varies slightly from the default.
 			uint8_t transmitBuffer[maximumBufferSize];	//General transmit buffer
 			uint8_t transmitPacketSize = 0;				//Current transmit packet size
 			bool bufferSent = true;						//Per transport marker for when something is sent
 			uint8_t payloadNumber = 0;					//Sequence number for payloads, this will overflow regularly
 		};
-		transportData* transport = nullptr;			//This will be allocated from heap during begin()
+		transportData* transport = nullptr;				//This will be allocated from heap during begin()
 		
 		
 		//Node information
-		//uint8_t maximumNumberOfNodes = 16;			//Max number of nodes
-		static const uint8_t maximumNumberOfNodes = 16;	//Max number of nodes
+		uint8_t maximumNumberOfNodes = 8;				//Max number of nodes
+		//static const uint8_t maximumNumberOfNodes = 16;	//Max number of nodes
 		uint8_t numberOfNodes = 0;
 		struct nodeInfo
 		{
 			uint8_t id = 0;
 			char* name = nullptr;
-			uint32_t* lastTick = nullptr; 			//This is per transport
-			uint16_t* nextTick = nullptr; 			//This is per transport
-			uint16_t* txReliability = nullptr;		//This is per transport
-			uint16_t* rxReliability = nullptr;		//This is per transport
-			uint8_t* lastPayloadNumber = nullptr;	//This is per transport
+			uint32_t lastSeen = 0;
+			uint32_t* lastTick = nullptr; 				//This is per transport
+			uint16_t* nextTick = nullptr; 				//This is per transport
+			uint16_t* txReliability = nullptr;			//This is per transport
+			uint16_t* rxReliability = nullptr;			//This is per transport
+			uint8_t* lastPayloadNumber = nullptr;		//This is per transport
 		};
-		//nodeInfo node[maximumNumberOfNodes];		//Chunky struct could overwhelm a small microcontroller, so be careful
-		nodeInfo* node;							//Chunky struct could overwhelm a small microcontroller, so be careful
+		nodeInfo* node;									//Chunky struct could overwhelm a small microcontroller, so be careful with maxNodes
 		//Node management functions
-		bool nodeExists(uint8_t id);				//Check if a node ID exists
-		uint8_t nodeIndexFromId(uint8_t id);		//Get an index into nodeInfo from a node ID
-		bool addNode(uint8_t id,					//Create a node. Default to excellent symmetric reliability
-			uint16_t reliability = 0xffff);			//Create a node with symmetric reliability
-		uint8_t nodeIndexFromName(char* name);		//Get an index into nodeInfo from a node name
+		bool nodeExists(uint8_t id);					//Check if a node ID exists
+		uint8_t nodeIndexFromId(uint8_t id);			//Get an index into nodeInfo from a node ID
+		bool addNode(uint8_t id,						//Create a node. Default to excellent symmetric reliability
+			uint16_t reliability = 0xffff);				//Create a node with symmetric reliability
+		uint8_t nodeIndexFromName(char* name);			//Get an index into nodeInfo from a node name
 		
 		//Node ID management
-		char* currentNodeName = nullptr;			//Everything has a name, don't use numerical addresses
-		uint8_t currentNodeId = 0;					//Current node ID, 0 implies not set
-		uint8_t minimumNodeId = 1;					//Lowest a node ID can be
-		uint8_t maximumNodeId = 254;				//Highest a node ID can be
-		bool selectNodeId();						//Select a node ID for this node
+		char* currentNodeName = nullptr;				//Everything has a name, don't use numerical addresses
+		uint8_t currentNodeId = 0;						//Current node ID, 0 implies not set
+		uint8_t minimumNodeId = 1;						//Lowest a node ID can be
+		uint8_t maximumNodeId = 254;					//Highest a node ID can be
+		bool selectNodeId();							//Select a node ID for this node
 		
 		//Duty cycle monitoring
-		uint32_t lastDutyCycleCheck = 0;			//Time of last duty cycle check
-		uint32_t dutyCycleCheckInterval = 1E3;		//Check duty cycle every 1s
-		void calculateDutyCycle(uint8_t);			//Calculate the duty cycle for a specific transport based off current txTime
-		void calculateDutyCycle();					//Calculate the duty cycle based off current txTime
+		uint32_t lastDutyCycleCheck = 0;				//Time of last duty cycle check
+		uint32_t dutyCycleCheckInterval = 1E3;			//Check duty cycle every 1s
+		void calculateDutyCycle(uint8_t);				//Calculate the duty cycle for a specific transport based off current txTime
+		void calculateDutyCycle();						//Calculate the duty cycle based off current txTime
 		
 		//Receive packet buffers
-		uint8_t receiveBuffer[maximumBufferSize];	//General receive buffer
-		uint8_t receiveBufferSize = 0;				//Current receive payload size
-		uint8_t receiveTransport = 0;				//Transport that received the packet
-		bool receiveBufferDecrypted = false;		//Has the decryption been done?
-		bool receiveBufferCrcChecked = false;		//Has the CRC been checked and removed?
+		uint8_t receiveBuffer[maximumBufferSize];		//General receive buffer
+		uint8_t receiveBufferSize = 0;					//Current receive payload size
+		uint8_t receiveTransport = 0;					//Transport that received the packet
+		bool receiveBufferDecrypted = false;			//Has the decryption been done?
+		bool receiveBufferCrcChecked = false;			//Has the CRC been checked and removed?
 		//Packet receiving functions
-		bool packetReceived();						//Check for a packet in the buffer
-		bool applicationDataPacketReceived();		//Check for an application data packet in the buffer
-		void clearReceiveBuffer();					//Clear the receive buffer
+		bool packetReceived();							//Check for a packet in the buffer
+		bool applicationDataPacketReceived();			//Check for an application data packet in the buffer
+		void clearReceiveBuffer();						//Clear the receive buffer
 
 		//Packet encoding/decoding
-		enum class payloadType:uint8_t{				//These are all a bit TBC
-			keepalive =						0x00,	//Lower four bits are a numeric type, making for 16 types
-			idResolutionRequest =			0x01,	//Upper four bits are a bitmask
+		enum class payloadType:uint8_t{					//These are all a bit TBC
+			keepalive =						0x00,		//Lower four bits are a numeric type, making for 16 types
+			idResolutionRequest =			0x01,		//Upper four bits are a bitmask
 			nameResolutionRequest =			0x02,
 			idAndNameResolutionResponse =	0x03,
 			duplicateId =					0x04,
@@ -230,126 +250,115 @@ class treacleClass	{
 			//encrypted =					0x40
 			//encrypted =					0x80
 			};
-		enum class nodeId:uint8_t{					//These are all a bit TBC
+		enum class nodeId:uint8_t{						//These are all a bit TBC
 			unknownNode =					0x00,
 			allNodes =						0xff
 		};
-		enum class headerPosition:uint8_t{			//These are all a bit TBC
-			recipient =			0,					//ID of recipient, 0x00 or 0xFF. This is first so a 'peek' can see it
-			sender =			1,					//ID of sender, 0x00 if not yet set
-			payloadType =		2,					//See previous enum
-			payloadNumber =		3,					//Sequence number which will overflow pretty regularly
-			packetLength =		4,					//This is raw packet length without CRC, padding or encryption!
-			blockIndex =		5,					//A 24-bit number used for large transfers or other flags
-			nextTick =			8,					//A 16-bit measure of the milliseconds to next scheduled packer
-			payload =			10					//Payload starts here!
+		enum class headerPosition:uint8_t{				//These are all a bit TBC
+			recipient =			0,						//ID of recipient, 0x00 or 0xFF. This is first so a 'peek' can see it
+			sender =			1,						//ID of sender, 0x00 if not yet set
+			payloadType =		2,						//See previous enum
+			payloadNumber =		3,						//Sequence number which will overflow pretty regularly
+			packetLength =		4,						//This is raw packet length without CRC, padding or encryption!
+			blockIndex =		5,						//A 24-bit number used for large transfers or other flags
+			nextTick =			8,						//A 16-bit measure of the milliseconds to next scheduled packer
+			payload =			10						//Payload starts here!
 			};
 		//Encoding/decoding functions
-		void buildPacketHeader(uint8_t,				//Put standard packet header in first X bytes
+		void buildPacketHeader(uint8_t,					//Put standard packet header in first X bytes
 			uint8_t, payloadType);
-		void buildKeepalivePacket(uint8_t);			//Keepalive packet
-		void buildIdResolutionRequestPacket(		//ID resolution request - which ID has this name?
+		void buildKeepalivePacket(uint8_t);				//Keepalive packet
+		void buildIdResolutionRequestPacket(			//ID resolution request - which ID has this name?
 			uint8_t, char*);
-		void buildNameResolutionRequestPacket(		//Name resolution request - which name has this ID?
+		void buildNameResolutionRequestPacket(			//Name resolution request - which name has this ID?
 			uint8_t, uint8_t);
-		void buildIdAndNameResolutionResponsePacket(//ID resolution response - ID maps to name
+		void buildIdAndNameResolutionResponsePacket(	//ID resolution response - ID maps to name
 			uint8_t, uint8_t, uint8_t);
-		void unpackPacket();						//Unpack the packet in the receive buffer
-		void unpackKeepalivePacket(					//Unpack a keepalive packet
+		void unpackPacket();							//Unpack the packet in the receive buffer
+		void unpackKeepalivePacket(						//Unpack a keepalive packet
 			uint8_t, uint8_t);
-		void unpackIdResolutionRequestPacket(		//Unpack an ID resolution request
+		void unpackIdResolutionRequestPacket(			//Unpack an ID resolution request
 			uint8_t, uint8_t);
-		void unpackNameResolutionRequestPacket(		//Unpack a name resolution request
+		void unpackNameResolutionRequestPacket(			//Unpack a name resolution request
 			uint8_t, uint8_t);
-		void unpackIdAndNameResolutionResponsePacket(//Unpack an ID resolution response
+		void unpackIdAndNameResolutionResponsePacket(	//Unpack an ID resolution response
 			uint8_t, uint8_t);
 
 		//General packet handling
 		bool processPacketBeforeTransmission(uint8_t transport);//Add CRC then encrypt, if necessary and possible
 		
 		//Encryption
-		void enableEncryption(uint8_t transport);	//Enable encryption for a specific transport
-		void disableEncryption(uint8_t transport);	//Disable encryption for a specific transport
-		uint8_t* encryptionKey = nullptr;			//Left null until set
+		void enableEncryption(uint8_t transport);		//Enable encryption for a specific transport
+		void disableEncryption(uint8_t transport);		//Disable encryption for a specific transport
+		uint8_t* encryptionKey = nullptr;				//Left null until set
 		#ifdef ESP32
-			esp_aes_context context;				//AES context
+			esp_aes_context context;					//AES context
 		#endif
-		uint8_t encryptionBlockSize = 16;			//Have to pad to this
-		bool encryptPayload(uint8_t*,				//Pad the buffer if necessary and encrypt the payload
+		uint8_t encryptionBlockSize = 16;				//Have to pad to this
+		bool encryptPayload(uint8_t*,					//Pad the buffer if necessary and encrypt the payload
 			uint8_t&);
-		bool decryptPayload(uint8_t*,				//Decrypt the payload and remove the padding, if necessary
+		bool decryptPayload(uint8_t*,					//Decrypt the payload and remove the padding, if necessary
 			uint8_t&);
 		
 		//Checksums
-		const uint16_t treaclePolynome = 0xac9a;	//Taken from https://users.ece.cmu.edu/~koopman/crc/ as a 'good' polynome
+		const uint16_t treaclePolynome = 0xac9a;		//Taken from https://users.ece.cmu.edu/~koopman/crc/ as a 'good' polynome
 		//Checksum functions
-		bool appendChecksumToPacket(uint8_t*,		//Append a checksum to the packet if possible. Also increases the payload size!
+		bool appendChecksumToPacket(uint8_t*,			//Append a checksum to the packet if possible. Also increases the payload size!
 			uint8_t&);
-		bool validatePacketChecksum(uint8_t*,		//Check the checksum of a packet. Also decreases the payload size!
+		bool validatePacketChecksum(uint8_t*,			//Check the checksum of a packet. Also decreases the payload size!
 			uint8_t&);
-			
-
-		//Ticks
-		uint16_t maximumTickTime = 60E3;			//Absolute longest time something can be scheduled in the future
-		//Tick functions
-		uint16_t minimumTickTime(uint8_t);			//Absolute minimum tick time
-		void setTickTime();							//Set a new tick time whenever something happens
-		uint16_t tickRandomisation(uint8_t);		//Random factor for timing
-		void bringForwardNextTick();				//Hurry up the tick time for urgent things
-		bool sendPacketOnTick();					//Send a single packet if it is due, returns true if this happens
-		void timeOutTicks();						//Potentially time out ticks from other nodes if they stop responding
-		
+					
 		//Transport abstraction helpers
-		bool sendBuffer(uint8_t, uint8_t*,			//Picks the appropriate sendBuffer function based on transport
+		bool sendBuffer(uint8_t, uint8_t*,				//Picks the appropriate sendBuffer function based on transport
 			uint8_t payloadSize);
-		bool packetInQueue();						//Check queue for every transport
-		bool packetInQueue(uint8_t);				//Check queue for a specific transport
+		bool packetInQueue();							//Check queue for every transport
+		bool packetInQueue(uint8_t);					//Check queue for a specific transport
 		
 		//ESP-Now specific settings
 		uint8_t espNowTransportId = 255;				//ID assigned to this transport if enabled, 255 implies it is not
-		uint8_t broadcastMacAddress[6] = {			//Most ESP-Now communications is broadcast
+		uint8_t broadcastMacAddress[6] = {				//Most ESP-Now communications is broadcast
 		0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
-		uint8_t preferredespNowChannel = 1;			//It may not be possible to switch to the preferred channel if it is a WiFi client
-		uint8_t currentEspNowChannel = 0;			//Track this, as it's not fixed if the device is a WiFi client
+		uint8_t preferredespNowChannel = 1;				//It may not be possible to switch to the preferred channel if it is a WiFi client
+		uint8_t currentEspNowChannel = 0;				//Track this, as it's not fixed if the device is a WiFi client
 		//ESP-Now specific functions
-		bool initialiseWiFi();						//Initialise WiFi and return result. Only changes things if WiFi is not already set up when treacle begins
-		bool changeWiFiChannel(uint8_t channel);	//Change the WiFi channel
-		bool initialiseEspNow();					//Initialise ESP-Now and return result
-		bool addEspNowPeer(uint8_t*);				//Add a peer, including relevant channel/interface for the time of addition
-		bool deleteEspNowPeer(uint8_t*);			//Delete a peer
-		bool sendBufferByEspNow(uint8_t*,			//Send a buffer using ESP-Now
+		bool initialiseWiFi();							//Initialise WiFi and return result. Only changes things if WiFi is not already set up when treacle begins
+		bool changeWiFiChannel(uint8_t channel);		//Change the WiFi channel
+		bool initialiseEspNow();						//Initialise ESP-Now and return result
+		bool addEspNowPeer(uint8_t*);					//Add a peer, including relevant channel/interface for the time of addition
+		bool deleteEspNowPeer(uint8_t*);				//Delete a peer
+		bool sendBufferByEspNow(uint8_t*,				//Send a buffer using ESP-Now
 			uint8_t);
 		
 		//LoRa specific settings
-		uint8_t loRaTransportId = 255;				//ID assigned to this transport if enabled, 255 implies it is not
-		int8_t loRaCSpin = -1;						//LoRa radio chip select pin
-		int8_t loRaResetPin = -1;					//LoRa radio reset pin
-		int8_t loRaIrqPin = -1;						//LoRa radio interrupt pin
-		uint32_t loRaFrequency = 868E6;				//LoRa frequency, broadly 868 in the EU, US is 915E6, Asia 433E6
-		uint8_t loRaTxPower = 17;					//LoRa TX power
-		uint8_t loRaSpreadingFactor = 9;			//LoRa spreading factor
-		uint32_t loRaSignalBandwidth= 62.5E3;		//Supported values are 7.8E3, 10.4E3, 15.6E3, 20.8E3, 31.25E3, 41.7E3, 62.5E3, 125E3(default), 250E3, and 500E3.
-		uint8_t loRaRxGain = 0;						//0-6, 0 = auto
-		uint8_t loRaSyncWord = 0x12;				//Valid options are 0x12, 0x56, 0x78, don't use 0x34 as that is LoRaWAN
-		float lastLoRaRssi = 0.0;					//Track RSSI as an extra indication of reachability
+		uint8_t loRaTransportId = 255;					//ID assigned to this transport if enabled, 255 implies it is not
+		int8_t loRaCSpin = -1;							//LoRa radio chip select pin
+		int8_t loRaResetPin = -1;						//LoRa radio reset pin
+		int8_t loRaIrqPin = -1;							//LoRa radio interrupt pin
+		uint32_t loRaFrequency = 868E6;					//LoRa frequency, broadly 868 in the EU, US is 915E6, Asia 433E6
+		uint8_t loRaTxPower = 17;						//LoRa TX power
+		uint8_t loRaSpreadingFactor = 9;				//LoRa spreading factor
+		uint32_t loRaSignalBandwidth= 62.5E3;			//Supported values are 7.8E3, 10.4E3, 15.6E3, 20.8E3, 31.25E3, 41.7E3, 62.5E3, 125E3(default), 250E3, and 500E3.
+		uint8_t loRaRxGain = 0;							//0-6, 0 = auto
+		uint8_t loRaSyncWord = 0x12;					//Valid options are 0x12, 0x56, 0x78, don't use 0x34 as that is LoRaWAN
+		float lastLoRaRssi = 0.0;						//Track RSSI as an extra indication of reachability
 		//LoRa specific functions
-		bool initialiseLoRa();						//Initialise LoRa and return result
-		bool sendBufferByLoRa(uint8_t*,				//Send a buffer using ESP-Now
+		bool initialiseLoRa();							//Initialise LoRa and return result
+		bool sendBufferByLoRa(uint8_t*,					//Send a buffer using ESP-Now
 			uint8_t);
-		bool receiveLoRa();							//Polling receive function
+		bool receiveLoRa();								//Polling receive function
 		
 		//COBS/Serial specific setting
-		uint8_t cobsTransportId = 255;				//ID assigned to this transport if enabled, 255 implies it is not
-		Stream *cobsUart_ = nullptr;				//COBS happens over a UART
-		uint32_t cobsBaudRate = 115200;				//COBS needs a baud rate
+		uint8_t cobsTransportId = 255;					//ID assigned to this transport if enabled, 255 implies it is not
+		Stream *cobsUart_ = nullptr;					//COBS happens over a UART
+		uint32_t cobsBaudRate = 115200;					//COBS needs a baud rate
 		//COBS/Serial specific functions
-		bool initialiseCobs();						//Initialise Cobs and return result
-		bool sendBufferByCobs(uint8_t*,				//Send a buffer using COBS
+		bool initialiseCobs();							//Initialise Cobs and return result
+		bool sendBufferByCobs(uint8_t*,					//Send a buffer using COBS
 			uint8_t);
 		
 		//Utility functions
-		uint8_t countBits(uint32_t thingToCount);	//Number of set bits in an uint32_t, or anything else
-		float reliabilityPercentage(uint16_t);		//Turn an uint32_t bitmask into a printable reliability measure
+		uint8_t countBits(uint32_t thingToCount);		//Number of set bits in an uint32_t, or anything else
+		float reliabilityPercentage(uint16_t);			//Turn an uint32_t bitmask into a printable reliability measure
 		/*
 		 *
 		 *	Debugging helpers
