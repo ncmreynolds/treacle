@@ -1224,9 +1224,9 @@ void treacleClass::changeCurrentState(state newState)
  */
 uint16_t treacleClass::minimumTickTime(uint8_t transportId)
 {
-	if(transportId == espNowTransportId) return	100;
-	else if(transportId == loRaTransportId) return 500;
-	else if(transportId == cobsTransportId) return 250;
+	if(transportId == espNowTransportId) return	1000;
+	else if(transportId == loRaTransportId) return 5000;
+	else if(transportId == cobsTransportId) return 2500;
 	else return 1000;
 }
 void treacleClass::setTickTime()
@@ -2041,17 +2041,6 @@ uint32_t treacleClass::rxAge(uint8_t id)
 	if(nodeIndex != maximumNumberOfNodes)
 	{
 		return millis() - node[nodeIndex].lastSeen;
-		/*
-		uint32_t latestTick = 0;
-		for(uint8_t transportIndex = 0; transportIndex < numberOfActiveTransports; transportIndex++)
-		{
-			if(node[nodeIndex].lastTick[transportIndex] > latestTick)
-			{
-				latestTick = node[nodeIndex].lastTick[transportIndex];
-			}
-		}
-		return millis() - latestTick;
-		*/
 	}
 	return 0;
 }
@@ -2342,13 +2331,13 @@ bool treacleClass::queueMessage(uint8_t* data, uint8_t length)
 		for (uint8_t transportId = 0; transportId < numberOfActiveTransports; transportId++)
 		{
 			if(transport[transportId].initialised == true &&	//It's initialised
-				packetInQueue(transportId) == false) 		//It's got nothing waiting to go
+				packetInQueue(transportId) == false) 			//It's got nothing waiting to go
 			{
 				buildPacketHeader(transportId, (uint8_t)nodeId::allNodes, payloadType::shortApplicationData);			//Make an application data packet
 				memcpy(&transport[transportId].transmitBuffer[(uint8_t)headerPosition::payload], data, length);			//Copy the data starting at headerPosition::payload
 				transport[transportId].transmitBuffer[(uint8_t)headerPosition::packetLength] = 							//Update packetLength field
 				(uint8_t)headerPosition::payload + length;
-				transport[transportId].transmitPacketSize += length;														//Update the length of the transmit buffer
+				transport[transportId].transmitPacketSize += length;													//Update the length of the transmit buffer
 				processPacketBeforeTransmission(transportId);															//Do CRC and encryption if needed
 				for(uint8_t nodeIndex = 0; nodeIndex < numberOfNodes; nodeIndex++)
 				{
@@ -2371,6 +2360,21 @@ bool treacleClass::queueMessage(uint8_t* data, uint8_t length)
 		return true;
 	}
 	return false;
+}
+bool treacleClass::sendMessage(char* data)
+{
+	bringForwardNextTick();
+	return queueMessage((uint8_t*)data, strlen(data)+1);
+}
+bool treacleClass::sendMessage(const unsigned char* data, uint8_t length)
+{
+	bringForwardNextTick();
+	return queueMessage((uint8_t*)data, (uint8_t)length);
+}
+bool treacleClass::sendMessage(uint8_t* data, uint8_t length)
+{
+	bringForwardNextTick();
+	return queueMessage(data, length);
 }
 bool treacleClass::retrieveWaitingMessage(uint8_t* destination)
 {

@@ -99,9 +99,13 @@ class treacleClass	{
 		void clearWaitingMessage();					//Trash an incoming message
 		uint8_t messageSender();					//The sender of the waiting message
 		uint32_t suggestedQueueInterval();			//Suggest a delay before the next message
-		bool queueMessage(char*);					//Send a short message
-		bool queueMessage(uint8_t*, uint8_t);		//Send a short message
-		bool queueMessage(const unsigned char*,		//Send a short message
+		bool queueMessage(char*);					//Queue a short message
+		bool queueMessage(uint8_t*, uint8_t);		//Queue a short message
+		bool queueMessage(const unsigned char*,		//Queue a short message
+			uint8_t);
+		bool sendMessage(char*);					//Send a short message ASAP
+		bool sendMessage(uint8_t*, uint8_t);		//Send a short message ASAP
+		bool sendMessage(const unsigned char*,		//Send a short message ASAP
 			uint8_t);
 		bool retrieveWaitingMessage(uint8_t*);		//Retrieve a message. The buffer must be large enough for it, no checking can be done
 		//Encryption
@@ -147,7 +151,7 @@ class treacleClass	{
 		static const uint8_t maximumPayloadSize = 238;	//Maximum application payload size, which is based off ESP-Now max size
 		
 		//Ticks
-		static const uint16_t maximumTickTime = 65E3;	//Absolute longest time something can be scheduled in the future
+		static const uint16_t maximumTickTime = 60E3;	//Absolute longest time something can be scheduled in the future
 		//Tick functions
 		uint16_t minimumTickTime(uint8_t);				//Absolute minimum tick time
 		void setTickTime();								//Set a new tick time whenever something happens
