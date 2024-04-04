@@ -2023,13 +2023,17 @@ bool treacleClass::online(uint8_t id)
 	{
 		for(uint8_t transportIndex = 0; transportIndex < numberOfActiveTransports; transportIndex++)
 		{
-			if(node[nodeIndex].rxReliability[transportIndex] > 0)
+			if(online(nodeIndex, transportIndex))
 			{
 				return true;
 			}
 		}
 	}
 	return false;
+}
+bool treacleClass::online(uint8_t index, uint8_t transport)
+{
+	return (node[index].txReliability[transport] >= 0x8000 || node[index].rxReliability[transport] >= 0x8000 || countBits(node[index].txReliability[transport]) > 8 || countBits(node[index].rxReliability[transport]) > 8);
 }
 uint32_t treacleClass::rxAge(uint8_t id)
 {
@@ -2275,7 +2279,8 @@ uint32_t treacleClass::suggestedQueueInterval()
 				{
 					if(nodeReached[nodeIndex] == false)
 					{
-						if(node[nodeIndex].txReliability[transportId] > 0xf000)	//This node is PROBABLY reachable on this transport!
+						if(online(nodeIndex, transportId))
+						//if(node[nodeIndex].txReliability[transportId] >= 0x8000 || countBits(node[nodeIndex].txReliability[transportId]) > 8)	//This node is PROBABLY reachable on this transport!
 						{
 							nodeReached[nodeIndex] = true;
 							numberOfNodesReached++;
@@ -2287,7 +2292,7 @@ uint32_t treacleClass::suggestedQueueInterval()
 			{
 				#if defined(TREACLE_DEBUG)
 					debugPrint(debugString_treacleSpace);
-					debugPrint(debugString_suggested_interval);
+					debugPrint(debugString_suggested_message_interval);
 					debugPrint(' ');
 					debugPrint((transport[transportId].nextTick * 2)/1000);
 					debugPrintln('s');
@@ -2300,7 +2305,7 @@ uint32_t treacleClass::suggestedQueueInterval()
 	{
 		#if defined(TREACLE_DEBUG)
 			debugPrint(debugString_treacleSpace);
-			debugPrint(debugString_suggested_interval);
+			debugPrint(debugString_suggested_message_interval);
 			debugPrint(' ');
 			debugPrint((transport[0].nextTick * 2)/1000);
 			debugPrintln('s');
@@ -2309,7 +2314,7 @@ uint32_t treacleClass::suggestedQueueInterval()
 	}
 	#if defined(TREACLE_DEBUG)
 		debugPrint(debugString_treacleSpace);
-		debugPrint(debugString_suggested_interval);
+		debugPrint(debugString_suggested_message_interval);
 		debugPrint(' ');
 		debugPrint((maximumTickTime * 2)/1000);
 		debugPrintln('s');
@@ -2331,14 +2336,6 @@ bool treacleClass::queueMessage(const unsigned char* data, uint8_t length)
 bool treacleClass::queueMessage(uint8_t* data, uint8_t length)
 {
 	bool nodeReached[numberOfNodes] = {};	//Used to track which nodes _should_ have been reached, in transport priority order and avoid sending using lower priority transports, if possible
-	/*
-	bool nodeUnreachable[numberOfNodes] = {};	//Used to track which nodes _should_ have been reached, in transport priority order and avoid sending using lower priority transports, if possible
-	for(uint8_t nodeIndex = 0; nodeIndex < numberOfNodes; nodeIndex++)
-	{
-		nodeUnreachable = true;
-	}
-	uint8_t numberOfUnreachableNodes = numberOfNodes;
-	*/
 	uint8_t numberOfNodesReached = 0;
 	if(length < maximumPayloadSize)
 	{
@@ -2346,7 +2343,6 @@ bool treacleClass::queueMessage(uint8_t* data, uint8_t length)
 		{
 			if(transport[transportId].initialised == true &&	//It's initialised
 				packetInQueue(transportId) == false) 		//It's got nothing waiting to go
-				//node[nodeIndex].txReliability[transportId] > 0x0000)	//Don't queue up unless _some_ keepalives are getting through
 			{
 				buildPacketHeader(transportId, (uint8_t)nodeId::allNodes, payloadType::shortApplicationData);			//Make an application data packet
 				memcpy(&transport[transportId].transmitBuffer[(uint8_t)headerPosition::payload], data, length);			//Copy the data starting at headerPosition::payload
@@ -2358,38 +2354,17 @@ bool treacleClass::queueMessage(uint8_t* data, uint8_t length)
 				{
 					if(nodeReached[nodeIndex] == false)
 					{
-						if(node[nodeIndex].txReliability[transportId] > 0xff00)	//This node is PROBABLY reachable on this transport!
+						if(online(nodeIndex, transportId))
+						//if(node[nodeIndex].txReliability[transportId] >= 0x8000 || countBits(node[nodeIndex].txReliability[transportId]) > 8)	//This node is PROBABLY reachable on this transport!
 						{
 							nodeReached[nodeIndex] = true;
 							numberOfNodesReached++;
-							/*
-							if(nodeUnreachable == true)
-							{
-								nodeUnreachable = false;	//Mark as not unreachable
-								numberOfUnreachableNodes--;
-							}
-							*/
 						}
 					}
 				}
 			}
 			if(numberOfNodesReached == numberOfNodes)
 			{
-				/*
-				#if defined(TREACLE_DEBUG)
-					debugPrint(debugString_treacleSpace);
-					debugPrint(debugString_all);
-					debugPrint(' ');
-					debugPrint(debugString_nodes);
-					debugPrint(' ');
-					debugPrint(debugString_reached);
-					debugPrint(' ');
-					debugPrint(debugString_with);
-					debugPrint(' ');
-					debugPrintTransportName(transportId);
-					debugPrintln();
-				#endif
-				*/
 				return true;	//We have almost certainly reached all the nodes with this transport, do not queue the message for lower priority (or higher cost) transports
 			}
 		}

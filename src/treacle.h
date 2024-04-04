@@ -317,6 +317,7 @@ class treacleClass	{
 			uint8_t payloadSize);
 		bool packetInQueue();							//Check queue for every transport
 		bool packetInQueue(uint8_t);					//Check queue for a specific transport
+		bool online(uint8_t, uint8_t);					//Is a specific treacle node online for a specific protocol? ie. has this node heard from it recently
 		
 		//ESP-Now specific settings
 		uint8_t espNowTransportId = 255;				//ID assigned to this transport if enabled, 255 implies it is not
@@ -480,7 +481,7 @@ class treacleClass	{
 			const char debugString_RXcolon[4] PROGMEM = "RX:";
 			const char debugString_RX_drops_colon[10] PROGMEM = "RX drops:";
 			const char debugString_up[3] PROGMEM = "up";
-			const char debugString_suggested_interval[19] PROGMEM = "suggested interval";
+			const char debugString_suggested_message_interval[27] PROGMEM = "suggested message interval";
 			
 			void debugPrintTransportName(uint8_t transport)
 			{
