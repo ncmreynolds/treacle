@@ -798,7 +798,7 @@ bool treacleClass::loRaInitialised()
 }
 uint32_t treacleClass::getLoRaRxPackets()
 {
-	if(espNowInitialised())
+	if(loRaInitialised())
 	{
 		return transport[loRaTransportId].rxPackets;
 	}
@@ -942,7 +942,7 @@ bool treacleClass::receiveLoRa()
 				receiveBufferSize = receivedMessageLength;				//Record the amount of payload
 				receiveBufferCrcChecked = false;						//Mark the payload as unchecked
 				receiveTransport = loRaTransportId;						//Record that it was received by ESP-Now
-				transport[loRaTransportId].rxPacketsProcessed++;			//Count the packet as processed
+				transport[loRaTransportId].rxPacketsProcessed++;		//Count the packet as processed
 				return true;
 			}
 		}
