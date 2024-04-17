@@ -176,7 +176,7 @@ bool treacleClass::begin(uint8_t maxNodes)
 			{
 				changeCurrentState(state::selectedId);
 			}
-			setTickTime();	//Set initial tick times
+			setNextTickTime();	//Set initial tick times
 			return true;
 		}
 	}
@@ -1060,7 +1060,7 @@ void treacleClass::setEncryptionKey(uint8_t* key)	//Set the encryption key
 		debugPrintln(debugString_encryption_key);
 	#endif
 	encryptionKey = key;
-	#ifdef ESP32
+	#if defined(ESP32) && !defined(TREACLE_OBFUSCATE_ONLY)
 		esp_aes_init(&context);							//Initialise the AES context
 		esp_aes_setkey(&context, encryptionKey, 128);	//Set the key
 	#endif
@@ -1080,7 +1080,7 @@ bool treacleClass::encryptPayload(uint8_t* buffer, uint8_t& packetSize)	//Pad th
 			debugPrint(padding);
 			debugPrint(' ');
 			debugPrint(debugString_toSpace);
-			debugPrint(packetSize - (uint8_t)headerPosition::blockIndex);
+			debugPrint(packetSize);
 			debugPrint(' ');
 			debugPrint(debugString_bytes);
 			debugPrint(' ');
@@ -1089,16 +1089,16 @@ bool treacleClass::encryptPayload(uint8_t* buffer, uint8_t& packetSize)	//Pad th
 	#if defined(TREACLE_OBFUSCATE_ONLY)
 		for(uint8_t bufferIndex = (uint8_t)headerPosition::blockIndex; bufferIndex < packetSize; bufferIndex++)
 		{
-			buffer[bufferIndex] = buffer[bufferIndex] ^ bufferIndex;	//This is obfuscation only, for testing.
+			buffer[bufferIndex] = buffer[bufferIndex] ^
+				encryptionKey[bufferIndex%encryptionBlockSize];							//This is obfuscation only, for testing.
 		}
 	#else
 		uint8_t initialisationVector[16];												//Allocate an initialisation vector
-		//memset(initialisationVector, 0, sizeof(initialisationVector));
-		memcpy(&initialisationVector[0],  buffer, 4);									//Use the first four bytes of the packet, repeated for the IV
+		memcpy(&initialisationVector[0],  buffer, 4);									//Use the first four bytes of the packet, repeated for the initialisation vector
 		memcpy(&initialisationVector[4],  buffer, 4);
 		memcpy(&initialisationVector[8],  buffer, 4);
 		memcpy(&initialisationVector[12], buffer, 4);
-		uint8_t encryptedData[packetSize - (uint8_t)headerPosition::blockIndex];		//Temporary location for the encryted data
+		uint8_t encryptedData[packetSize - (uint8_t)headerPosition::blockIndex];		//Temporary storage for the encryted data
 		esp_aes_crypt_cbc(&context, ESP_AES_ENCRYPT,									//Do the encryption
 			packetSize - (uint8_t)headerPosition::blockIndex,							//Length of the data to encrypt
 			initialisationVector,														//Initialisation vector
@@ -1126,7 +1126,6 @@ bool treacleClass::decryptPayload(uint8_t* buffer, uint8_t& packetSize)	//Decryp
 			debugPrint(debugString_bytes);
 			debugPrint(' ');
 		#endif
-		//packetSize = buffer[(uint8_t)headerPosition::packetLength] + 2;
 	}
 	//if(packetSize >= (uint8_t)headerPosition::blockIndex && packetSize <= maximumBufferSize - 2)
 	{
@@ -1134,19 +1133,20 @@ bool treacleClass::decryptPayload(uint8_t* buffer, uint8_t& packetSize)	//Decryp
 			debugPrint(debugString_decrypted);
 			debugPrint(' ');
 		#endif
+		buffer[(uint8_t)headerPosition::payloadType] = buffer[(uint8_t)headerPosition::payloadType] & (0xff ^ (uint8_t)payloadType::encrypted);	//Mark as not encrypted, otherwise the IV and CRC is invalid
 		#if defined(TREACLE_OBFUSCATE_ONLY)
 			for(uint8_t bufferIndex = (uint8_t)headerPosition::blockIndex; bufferIndex < packetSize; bufferIndex++)
 			{
-				buffer[bufferIndex] = buffer[bufferIndex] ^ bufferIndex;	//This is obfuscation only, for testing.
+				buffer[bufferIndex] = buffer[bufferIndex] ^
+					encryptionKey[bufferIndex%encryptionBlockSize];							//This is obfuscation only, for testing.
 			}
 		#else
 			uint8_t initialisationVector[16];												//Allocate an initialisation vector
-			//memset(initialisationVector, 0, sizeof(initialisationVector));
-			memcpy(&initialisationVector[0],  buffer, 4);									//Use the first four bytes of the packet, repeated for the IV
+			memcpy(&initialisationVector[0],  buffer, 4);									//Use the first four bytes of the packet, repeated for the initialisation vector
 			memcpy(&initialisationVector[4],  buffer, 4);
 			memcpy(&initialisationVector[8],  buffer, 4);
 			memcpy(&initialisationVector[12], buffer, 4);
-			uint8_t decryptedData[packetSize - (uint8_t)headerPosition::blockIndex];		//Temporary location for the decryted data
+			uint8_t decryptedData[packetSize - (uint8_t)headerPosition::blockIndex];		//Temporary storage for the decryted data
 			esp_aes_crypt_cbc(&context, ESP_AES_DECRYPT,									//Do the decryption
 				packetSize - (uint8_t)headerPosition::blockIndex,							//Length of the data to encrypt
 				initialisationVector,														//Initialisation vector
@@ -1154,7 +1154,6 @@ bool treacleClass::decryptPayload(uint8_t* buffer, uint8_t& packetSize)	//Decryp
 				decryptedData);																//Destination for the encrypted version
 			memcpy(&buffer[(uint8_t)headerPosition::blockIndex], decryptedData, packetSize - (uint8_t)headerPosition::blockIndex); //Copy the decrypted version back over the buffer
 		#endif
-		buffer[(uint8_t)headerPosition::payloadType] = buffer[(uint8_t)headerPosition::payloadType] & (0xff ^ (uint8_t)payloadType::encrypted);	//Mark as not encrypted, otherwise the CRC is invalid
 		return true;
 	}
 	return false;
@@ -1229,12 +1228,16 @@ uint16_t treacleClass::minimumTickTime(uint8_t transportId)
 	else if(transportId == cobsTransportId) return 2500;
 	else return 1000;
 }
-void treacleClass::setTickTime()
+void treacleClass::setNextTickTime()
 {
 	for(uint8_t transportIndex = 0; transportIndex < numberOfActiveTransports; transportIndex++)
 	{
-		transport[transportIndex].nextTick = transport[transportIndex].defaultTick - tickRandomisation(transportIndex);
+		setNextTickTime(transportIndex);
 	}
+}
+void treacleClass::setNextTickTime(uint8_t transportId)
+{
+	transport[transportId].nextTick = transport[transportId].defaultTick - tickRandomisation(transportId);
 }
 uint16_t treacleClass::tickRandomisation(uint8_t transportId)
 {
@@ -1257,13 +1260,6 @@ void treacleClass::bringForwardNextTick()
 }
 bool treacleClass::sendPacketOnTick()
 {
-	/*
-	if(millis() - lastDutyCycleCheck > dutyCycleCheckInterval)
-	{
-		lastDutyCycleCheck = millis();
-		calculateDutyCycle();
-	}
-	*/
 	for(uint8_t transportId = 0; transportId < numberOfActiveTransports; transportId++)
 	{
 		if(transport[transportId].nextTick != 0 && millis() - transport[transportId].lastTick > transport[transportId].nextTick)	//nextTick = 0 implies never
@@ -1422,29 +1418,24 @@ void treacleClass::timeOutTicks()
  */
 void treacleClass::buildPacketHeader(uint8_t transportId, uint8_t recipient, payloadType type)
 {
-	setTickTime();																								//States and transports all have their own tick times
+	setNextTickTime(transportId);																								//Set the next tick time for this packet
 	if(recipient == (uint8_t)nodeId::unknownNode)
 	{
-		bringForwardNextTick();																					//Bring forward the next tick ASAP for any starting nodes
+		bringForwardNextTick();																									//Bring forward the next tick ASAP for any starting nodes
 	}
-	transport[transportId].transmitBuffer[(uint8_t)headerPosition::recipient] = recipient;						//Add the recipient Id
-	transport[transportId].transmitBuffer[(uint8_t)headerPosition::sender] = currentNodeId;						//Add the current nodeId
-	transport[transportId].transmitBuffer[(uint8_t)headerPosition::payloadType] = (uint8_t)type;					//Payload type
-	transport[transportId].transmitBuffer[(uint8_t)headerPosition::payloadNumber] = transport[transportId].payloadNumber++;				//Payload number, which post-increments
-	transport[transportId].transmitBuffer[(uint8_t)headerPosition::packetLength] = 0;								//Payload length - starts at 0 and gets updated
-	transport[transportId].transmitBuffer[(uint8_t)headerPosition::blockIndex] = 0;								//Large payload start bits 16-23
-	transport[transportId].transmitBuffer[(uint8_t)headerPosition::blockIndex+1] = 0;								//Large payload start bits 8-15
-	transport[transportId].transmitBuffer[(uint8_t)headerPosition::blockIndex+2] = 0;								//Large payload start bits 0-7
+	transport[transportId].transmitBuffer[(uint8_t)headerPosition::recipient] = recipient;										//Add the recipient Id
+	transport[transportId].transmitBuffer[(uint8_t)headerPosition::sender] = currentNodeId;										//Add the current nodeId
+	transport[transportId].transmitBuffer[(uint8_t)headerPosition::payloadType] = (uint8_t)type;								//Payload type
+	transport[transportId].transmitBuffer[(uint8_t)headerPosition::payloadNumber] = transport[transportId].payloadNumber++;		//Payload number, which post-increments
+	transport[transportId].transmitBuffer[(uint8_t)headerPosition::packetLength] = 0;											//Payload length - starts at 0 and gets updated later
+	transport[transportId].transmitBuffer[(uint8_t)headerPosition::blockIndex] = 0;												//Large payload start bits 16-23
+	transport[transportId].transmitBuffer[(uint8_t)headerPosition::blockIndex+1] = 0;											//Large payload start bits 8-15
+	transport[transportId].transmitBuffer[(uint8_t)headerPosition::blockIndex+2] = 0;											//Large payload start bits 0-7
 	transport[transportId].transmitBuffer[(uint8_t)headerPosition::nextTick] = (transport[transportId].nextTick & 0xff00) >> 8;	//nextTick bits 8-15
 	transport[transportId].transmitBuffer[(uint8_t)headerPosition::nextTick+1] = (transport[transportId].nextTick & 0x00ff);	//nextTick bits 0-7
-	transport[transportId].transmitPacketSize = (uint8_t)headerPosition::payload;									//Set the size to just the header
-	transport[transportId].bufferSent = false;																	//Mark as unsent for this transport
-	/*
-	for(uint8_t transportIndex = 0; transportIndex < numberOfActiveTransports; transportIndex++)
-	{
-		transport[transportIndex].bufferSent = false;													//Mark as unsent for each transport
-	}
-	*/
+	//
+	transport[transportId].transmitPacketSize = (uint8_t)headerPosition::payload;												//Set the size to just the header
+	transport[transportId].bufferSent = false;																					//Mark as unsent for this transport
 }
 void treacleClass::buildKeepalivePacket(uint8_t transportId)
 {

@@ -11,6 +11,7 @@
 #include <Arduino.h>
 
 #define TREACLE_DEBUG
+//#define TREACLE_OBFUSCATE_ONLY
 
 #ifdef ESP32
 	#include <WiFi.h>
@@ -154,7 +155,8 @@ class treacleClass	{
 		static const uint16_t maximumTickTime = 60E3;	//Absolute longest time something can be scheduled in the future
 		//Tick functions
 		uint16_t minimumTickTime(uint8_t);				//Absolute minimum tick time
-		void setTickTime();								//Set a new tick time whenever something happens
+		void setNextTickTime();							//Set a next tick time for all transports, done at startup
+		void setNextTickTime(uint8_t);					//Set a next tick time immediately before sending for a specific transport
 		uint16_t tickRandomisation(uint8_t);			//Random factor for timing
 		void bringForwardNextTick();					//Hurry up the tick time for urgent things
 		bool sendPacketOnTick();						//Send a single packet if it is due, returns true if this happens
@@ -186,8 +188,8 @@ class treacleClass	{
 		
 		
 		//Node information
-		uint8_t maximumNumberOfNodes = 8;				//Max number of nodes
-		//static const uint8_t maximumNumberOfNodes = 16;	//Max number of nodes
+		uint8_t maximumNumberOfNodes = 8;				//Expected max number of nodes
+		static const uint8_t absoluteMaximumNumberOfNodes = 80;	//Absolute max number of nodes
 		uint8_t numberOfNodes = 0;
 		struct nodeInfo
 		{
@@ -201,8 +203,6 @@ class treacleClass	{
 			uint8_t* lastPayloadNumber = nullptr;		//This is per transport
 		};
 		nodeInfo* node;									//Chunky struct could overwhelm a small microcontroller, so be careful with maxNodes
-		int16_t* rssi;									//Store last RSSI for each node
-		float* snr;									//Store last SNR for each node
 		//Node management functions
 		bool nodeExists(uint8_t id);					//Check if a node ID exists
 		uint8_t nodeIndexFromId(uint8_t id);			//Get an index into nodeInfo from a node ID
@@ -213,15 +213,12 @@ class treacleClass	{
 		//Node ID management
 		char* currentNodeName = nullptr;				//Everything has a name, don't use numerical addresses
 		uint8_t currentNodeId = 0;						//Current node ID, 0 implies not set
-		uint8_t minimumNodeId = 1;						//Lowest a node ID can be
-		uint8_t maximumNodeId = 254;					//Highest a node ID can be
+		static const uint8_t minimumNodeId = 1;			//Lowest a node ID can be
+		static const uint8_t maximumNodeId = 126;		//Highest a node ID can be
 		bool selectNodeId();							//Select a node ID for this node
 		
 		//Duty cycle monitoring
-		uint32_t lastDutyCycleCheck = 0;				//Time of last duty cycle check
-		uint32_t dutyCycleCheckInterval = 1E3;			//Check duty cycle every 1s
-		void calculateDutyCycle(uint8_t);				//Calculate the duty cycle for a specific transport based off current txTime
-		//void calculateDutyCycle();						//Calculate the duty cycle based off current txTime
+		void calculateDutyCycle(uint8_t);				//Calculate the duty cycle for a specific transport based off current txTime, done just before sending
 		
 		//Receive packet buffers
 		uint8_t receiveBuffer[maximumBufferSize];		//General receive buffer
@@ -299,7 +296,7 @@ class treacleClass	{
 		void enableEncryption(uint8_t transport);		//Enable encryption for a specific transport
 		void disableEncryption(uint8_t transport);		//Disable encryption for a specific transport
 		uint8_t* encryptionKey = nullptr;				//Left null until set
-		#ifdef ESP32
+		#if defined(ESP32) && !defined(TREACLE_OBFUSCATE_ONLY)
 			esp_aes_context context;					//AES context
 		#endif
 		uint8_t encryptionBlockSize = 16;				//Have to pad to this
@@ -351,6 +348,8 @@ class treacleClass	{
 		uint8_t loRaSyncWord = 0x12;					//Valid options are 0x12, 0x56, 0x78, don't use 0x34 as that is LoRaWAN
 		int16_t lastLoRaRssi = 0;						//Track RSSI as an extra indication of reachability
 		float lastLoRaSNR = 0;							//Track SNR as an extra indication of reachability
+		int16_t* rssi;									//Store last RSSI for each node, IF LoRa is enabled
+		float* snr;										//Store last SNR for each node, IF LoRa is enabled
 		//LoRa specific functions
 		bool initialiseLoRa();							//Initialise LoRa and return result
 		bool sendBufferByLoRa(uint8_t*,					//Send a buffer using ESP-Now
