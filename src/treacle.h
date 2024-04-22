@@ -26,12 +26,11 @@
 	#endif
 #endif
 
-#define NUMBER_OF_PROTOCOLS
-
 #include <SPI.h>
 #include <LoRa.h>
 #include "CRC16.h" //A CRC16 is used to check the packet is LIKELY to be sent in a known format
 #include "CRC.h"
+#include <PubSubClient.h>	//Support for MQTT
 
 class treacleClass	{
 
@@ -81,11 +80,25 @@ class treacleClass	{
 		//MQTT
 		void enableMQTT();							//Enable MQTT
 		bool MQTTEnabled();							//Is MQTT enabled?
-		void setMQTTserver(char*);
-		void setMQTTport(uint16_t);
-		void setMQTTusername(char*);
-		void setMQTTpassword(char*);
-		bool MQTTinitialised();						//Is MQTT correctly initialised?
+		void setMQTTserver(char*);					//Set the MQTT server name
+		void setMQTTserver(IPAddress);				//Set the MQTT server IP address (IPv4)
+		void setMQTTport(uint16_t);					//Set the MQTT server, if not default
+		void setMQTTtopic(char*);					//Set the MQTT base topic, if not default (/treacle)
+		void setMQTTusername(char*);				//Set the MQTT username
+		void setMQTTpassword(char*);				//Set the MQTT password
+		void setMQTTserver(String);					//Set the MQTT server
+		void setMQTTtopic(String);					//Set the MQTT base topic, if not default (/treacle)
+		void setMQTTusername(String);				//Set the MQTT username
+		void setMQTTpassword(String);				//Set the MQTT password
+		bool MQTTInitialised();						//Is MQTT correctly initialised?
+		uint32_t getMQTTRxPackets();				//Get packet stats
+		uint32_t getMQTTTxPackets();				//Get packet stats
+		uint32_t getMQTTRxPacketsDropped();			//Get packet stats
+		uint32_t getMQTTTxPacketsDropped();			//Get packet stats
+		float getMQTTDutyCycle();					//Get packet stats
+		uint32_t getMQTTDutyCycleExceptions();		//Get packet stats
+		void setMQTTTickInterval(uint16_t tick);	//Set the interval between packets
+		uint16_t getMQTTTickInterval();				//Get interval between packets
 		//COBS/Serial
 		void enableCobs();
 		bool cobsEnabled();
@@ -356,13 +369,32 @@ class treacleClass	{
 			uint8_t);
 		bool receiveLoRa();								//Polling receive function
 		
-		//COBS/Serial specific setting
+		//COBS/Serial specific settings
 		uint8_t cobsTransportId = 255;					//ID assigned to this transport if enabled, 255 implies it is not
 		Stream *cobsUart_ = nullptr;					//COBS happens over a UART
 		uint32_t cobsBaudRate = 115200;					//COBS needs a baud rate
 		//COBS/Serial specific functions
 		bool initialiseCobs();							//Initialise Cobs and return result
 		bool sendBufferByCobs(uint8_t*,					//Send a buffer using COBS
+			uint8_t);
+			
+		//MQTT specific settings
+		uint8_t MQTTTransportId = 255;					//ID assigned to this transport if enabled, 255 implies it is not
+		char* MQTTserver = nullptr;						//MQTT server IP address/name
+		IPAddress MQTTserverIp = {0,0,0,0};				//Allow configuration by IP
+		uint16_t MQTTport = 1883;						//MQTT server port
+		char* MQTTusername = nullptr;					//MQTT server username
+		char* MQTTpassword = nullptr;					//MQTT server password
+		char* MQTTtopic = nullptr;						//MQTT server topic
+		char* MQTTunicastTopic = nullptr;				//MQTT server unicast topic for this node
+		const char MQTTdefaultTopic[9] PROGMEM			//MQTT server default topic
+			= "/treacle";
+		//WiFiClient* mqttClient = nullptr;				//TCP/IP client
+		WiFiClient mqttClient;							//TCP/IP client
+		PubSubClient* mqtt = nullptr;					//MQTT client
+		bool initialiseMQTT();							//Initialise MQTT
+		void connectToMQTTserver();						//Attempt to (re)connect to the server
+		bool sendBufferByMQTT(uint8_t*,					//Send a buffer using COBS
 			uint8_t);
 		
 		//Utility functions
@@ -421,6 +453,7 @@ class treacleClass	{
 			const char debugString_changedSpaceTo[11] PROGMEM = "changed to";
 			const char debugString_WiFiSpacenotSpaceenabled[17] PROGMEM = "WiFi not enabled";
 			const char debugString_LoRa[5] PROGMEM = "LoRa";
+			const char debugString_MQTT[5] PROGMEM = "MQTT";
 			const char debugString_COBS[5] PROGMEM = "COBS";
 			const char debugString_newSpaceState[10] PROGMEM = "new state";
 			const char debugString_uninitialised[14] PROGMEM = "uninitialised";
@@ -485,6 +518,13 @@ class treacleClass	{
 			const char debugString_RX_drops_colon[10] PROGMEM = "RX drops:";
 			const char debugString_up[3] PROGMEM = "up";
 			const char debugString_suggested_message_interval[27] PROGMEM = "suggested message interval";
+			const char debugString_MQTTspace[6] PROGMEM = "MQTT ";
+			const char debugString_connectionSpace[12] PROGMEM = "connection ";
+			const char debugString_MQTT_server[12] PROGMEM = "MQTT server";
+			const char debugString_MQTT_topic[11] PROGMEM = "MQTT topic";
+			const char debugString_MQTT_port[10] PROGMEM = "MQTT port";
+			const char debugString_MQTT_username[14] PROGMEM = "MQTT username";
+			const char debugString_MQTT_password[14] PROGMEM = "MQTT password";
 			
 			void debugPrintTransportName(uint8_t transport)
 			{
