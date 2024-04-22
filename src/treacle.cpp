@@ -137,6 +137,10 @@ bool treacleClass::begin(uint8_t maxNodes)
 			{
 				transport[transportIndex].initialised = initialiseMQTT();
 			}
+			else if(transportIndex == UDPTransportId)
+			{
+				transport[transportIndex].initialised = initialiseUDP();
+			}
 			else if(transportIndex == cobsTransportId)
 			{
 				transport[transportIndex].initialised = initialiseCobs();
@@ -252,6 +256,10 @@ bool treacleClass::sendBuffer(uint8_t transportId, uint8_t* buffer, uint8_t pack
 	else if(transportId == MQTTTransportId)
 	{
 		return sendBufferByMQTT(buffer, packetSize);
+	}
+	else if(transportId == UDPTransportId)
+	{
+		return sendBufferByUDP(buffer, packetSize);
 	}
 	else if(transportId == cobsTransportId)
 	{
@@ -986,7 +994,8 @@ void treacleClass::setMQTTserver(char* server)
 		strlcpy(MQTTserver, server, strlen(server) + 1);
 		#if defined(TREACLE_DEBUG)
 			debugPrint(debugString_treacleSpace);
-			debugPrint(debugString_MQTT_server);
+			debugPrint(debugString_MQTTspace);
+			debugPrint(debugString_server);
 			debugPrint(':');
 			debugPrintStringln(MQTTserver);
 		#endif
@@ -1012,7 +1021,8 @@ void treacleClass::setMQTTtopic(char* topic)
 		strlcpy(MQTTtopic, topic, strlen(topic) + 1);
 		#if defined(TREACLE_DEBUG)
 			debugPrint(debugString_treacleSpace);
-			debugPrint(debugString_MQTT_topic);
+			debugPrint(debugString_MQTTspace);
+			debugPrint(debugString_topic);
 			debugPrint(':');
 			debugPrintStringln(MQTTtopic);
 		#endif
@@ -1023,7 +1033,8 @@ void treacleClass::setMQTTport(uint16_t port)
 	MQTTport = port;
 	#if defined(TREACLE_DEBUG)
 		debugPrint(debugString_treacleSpace);
-		debugPrint(debugString_MQTT_port);
+		debugPrint(debugString_MQTTspace);
+		debugPrint(debugString_port);
 		debugPrint(':');
 		debugPrintln(MQTTport);
 	#endif
@@ -1044,7 +1055,8 @@ void treacleClass::setMQTTusername(char* username)
 		strlcpy(MQTTusername, username, strlen(username) + 1);
 		#if defined(TREACLE_DEBUG)
 			debugPrint(debugString_treacleSpace);
-			debugPrint(debugString_MQTT_username);
+			debugPrint(debugString_MQTTspace);
+			debugPrint(debugString_username);
 			debugPrint(':');
 			debugPrintStringln(MQTTusername);
 		#endif
@@ -1066,7 +1078,8 @@ void treacleClass::setMQTTpassword(char* password)
 		strlcpy(MQTTpassword, password, strlen(password) + 1);
 		#if defined(TREACLE_DEBUG)
 			debugPrint(debugString_treacleSpace);
-			debugPrint(debugString_MQTT_password);
+			debugPrint(debugString_MQTTspace);
+			debugPrint(debugString_password);
 			debugPrint(':');
 			debugPrintStringln(MQTTpassword);
 		#endif
@@ -1289,6 +1302,188 @@ uint16_t treacleClass::getMQTTTickInterval()
 	if(MQTTInitialised())
 	{
 		return transport[MQTTTransportId].nextTick;
+	}
+	return 0;
+}
+/*
+ *
+ *	UDP functions
+ *
+ */
+void treacleClass::setUDPMulticastAddress(IPAddress address)
+{
+	udpMulticastAddress = address;
+}
+void treacleClass::setUDPport(uint16_t port)
+{
+	udpPort = port;
+	#if defined(TREACLE_DEBUG)
+		debugPrint(debugString_treacleSpace);
+		debugPrint(debugString_UDPspace);
+		debugPrint(debugString_port);
+		debugPrint(':');
+		debugPrintln(udpPort);
+	#endif
+}
+void treacleClass::enableUDP()
+{
+	#if defined(TREACLE_DEBUG)
+		debugPrint(debugString_treacleSpace);
+		debugPrint(debugString_enablingSpace);
+		debugPrintln(debugString_UDP);
+	#endif
+	UDPTransportId = numberOfActiveTransports++;
+}
+bool treacleClass::UDPEnabled()
+{
+	return UDPTransportId != 255;	//Not necessarily very useful, but it can be checked
+}
+bool treacleClass::initialiseUDP()
+{
+	#if defined(TREACLE_DEBUG)
+		debugPrint(debugString_treacleSpace);
+		debugPrint(debugString_initialisingSpace);
+		debugPrint(debugString_UDP);
+		debugPrint(':');
+	#endif
+	udp = new AsyncUDP;
+	if(udp->listenMulticast(udpMulticastAddress, udpPort))
+	{
+        udp->onPacket(
+			[](AsyncUDPPacket receivedMessage)
+			{
+				#if defined(TREACLE_DEBUG)
+					/*
+					treacle.debugPrint("UDP Packet Type: ");
+					treacle.debugPrint(receivedMessage.isBroadcast()?"Broadcast":receivedMessage.isMulticast()?"Multicast":"Unicast");
+					treacle.debugPrint(", From: ");
+					treacle.debugPrint(receivedMessage.remoteIP());
+					treacle.debugPrint(":");
+					treacle.debugPrint(receivedMessage.remotePort());
+					treacle.debugPrint(", To: ");
+					treacle.debugPrint(receivedMessage.localIP());
+					treacle.debugPrint(":");
+					treacle.debugPrint(receivedMessage.localPort());
+					treacle.debugPrint(", Length: ");
+					treacle.debugPrint(receivedMessage.length());
+					//Serial.print(", Data: ");
+					//Serial.write(receivedMessage.data(), receivedMessage.length());
+					treacle.debugPrintln();
+					*/
+				#endif
+				if(treacle.receiveBufferSize == 0 && receivedMessage.length() < treacle.maximumBufferSize)
+				{
+					treacle.transport[treacle.UDPTransportId].rxPackets++;						//Count the packet as received
+					if(receivedMessage.data()[0] == (uint8_t)treacle.nodeId::allNodes ||
+						receivedMessage.data()[0] == treacle.currentNodeId)						//Packet is meaningful to this node
+					{
+						memcpy(treacle.receiveBuffer, receivedMessage.data(), receivedMessage.length());	//Copy the UDP payload into the receive buffer
+						treacle.receiveBufferSize = receivedMessage.length();								//Record the amount of payload
+						treacle.receiveBufferCrcChecked = false;											//Mark the payload as unchecked
+						treacle.receiveTransport = treacle.UDPTransportId;									//Record that it was received by UDP
+						treacle.transport[treacle.UDPTransportId].rxPacketsProcessed++;						//Count the packet as processed
+					}
+					return;
+				}
+				else
+				{
+					treacle.transport[treacle.UDPTransportId].rxPacketsDropped++;					//Count the drop
+				}
+			});
+		#if defined(TREACLE_DEBUG)
+			debugPrintln(debugString_OK);
+		#endif
+		transport[UDPTransportId].initialised = true;				//Mark as initialised
+		transport[UDPTransportId].defaultTick = maximumTickTime/10;	//Set default tick timer
+	}
+	else
+	{
+		#if defined(TREACLE_DEBUG)
+			debugPrintln(debugString_failed);
+		#endif
+		transport[UDPTransportId].initialised = false;				//Mark as not initialised
+	}
+	return transport[UDPTransportId].initialised;
+}
+bool treacleClass::sendBufferByUDP(uint8_t* buffer, uint8_t packetSize)
+{
+	transport[UDPTransportId].txStartTime = micros();
+	if(udp->write(buffer, packetSize))
+	{
+		transport[UDPTransportId].txTime += micros()			//Add to the total transmit time
+			- transport[UDPTransportId].txStartTime;
+		transport[UDPTransportId].txStartTime = 0;				//Clear the initial send time
+		transport[UDPTransportId].txPackets++;					//Count the packet
+		return true;
+	}
+	transport[UDPTransportId].txStartTime = 0;
+	return false;
+}
+bool treacleClass::UDPInitialised()
+{
+	if(UDPTransportId != 255)
+	{
+		return transport[UDPTransportId].initialised;
+	}
+	return false;
+}
+uint32_t treacleClass::getUDPRxPackets()
+{
+	if(UDPInitialised())
+	{
+		return transport[UDPTransportId].rxPackets;
+	}
+	return 0;
+}
+uint32_t treacleClass::getUDPTxPackets()
+{
+	if(UDPInitialised())
+	{
+		return transport[UDPTransportId].txPackets;
+	}
+	return 0;
+}
+uint32_t treacleClass::getUDPRxPacketsDropped()
+{
+	if(UDPInitialised())
+	{
+		return transport[UDPTransportId].rxPacketsDropped;
+	}
+	return 0;
+}
+uint32_t treacleClass::getUDPTxPacketsDropped()
+{
+	if(UDPInitialised())
+	{
+		return transport[UDPTransportId].txPacketsDropped;
+	}
+	return 0;
+}
+float treacleClass::getUDPDutyCycle()
+{
+	if(UDPInitialised())
+	{
+		return transport[UDPTransportId].calculatedDutyCycle;
+	}
+	return 0;
+}
+uint32_t treacleClass::getUDPDutyCycleExceptions()
+{
+	if(UDPInitialised())
+	{
+		return transport[UDPTransportId].dutyCycleExceptions;
+	}
+	return 0;
+}
+void treacleClass::setUDPTickInterval(uint16_t tick)
+{
+	transport[UDPTransportId].defaultTick = tick;
+}
+uint16_t treacleClass::getUDPTickInterval()
+{
+	if(UDPInitialised())
+	{
+		return transport[UDPTransportId].nextTick;
 	}
 	return 0;
 }

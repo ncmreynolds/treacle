@@ -24,6 +24,7 @@
 	#if !defined(TREACLE_OBFUSCATE_ONLY)
 		#include <aes/esp_aes.h>
 	#endif
+	#include <AsyncUDP.h>
 #endif
 
 #include <SPI.h>
@@ -99,6 +100,21 @@ class treacleClass	{
 		uint32_t getMQTTDutyCycleExceptions();		//Get packet stats
 		void setMQTTTickInterval(uint16_t tick);	//Set the interval between packets
 		uint16_t getMQTTTickInterval();				//Get interval between packets
+		//UDP
+		void enableUDP();							//Enable UDP
+		bool UDPEnabled();							//Is UDP enabled?
+		bool UDPInitialised();						//Is UDP correctly initialised?
+		void setUDPMulticastAddress(				//Set the multicast address to use (default 224.0.1.38)
+			IPAddress address);
+		void setUDPport(uint16_t);					//Set the UDP port (default 47625)
+		uint32_t getUDPRxPackets();					//Get packet stats
+		uint32_t getUDPTxPackets();					//Get packet stats
+		uint32_t getUDPRxPacketsDropped();			//Get packet stats
+		uint32_t getUDPTxPacketsDropped();			//Get packet stats
+		float getUDPDutyCycle();					//Get packet stats
+		uint32_t getUDPDutyCycleExceptions();		//Get packet stats
+		void setUDPTickInterval(uint16_t tick);	//Set the interval between packets
+		uint16_t getUDPTickInterval();				//Get interval between packets
 		//COBS/Serial
 		void enableCobs();
 		bool cobsEnabled();
@@ -396,6 +412,16 @@ class treacleClass	{
 		void connectToMQTTserver();						//Attempt to (re)connect to the server
 		bool sendBufferByMQTT(uint8_t*,					//Send a buffer using COBS
 			uint8_t);
+			
+		//UDP specific settings/functions
+		uint8_t UDPTransportId = 255;					//ID assigned to this transport if enabled, 255 implies it is not
+		AsyncUDP* udp;									//UDP instance
+		//AsyncUDP udp;									//UDP instance
+		IPAddress udpMulticastAddress = {224,0,1,38};	//Multicast address
+		uint16_t udpPort = 47625;						//UDP port number
+		bool initialiseUDP();							//Initialise UDP
+		bool sendBufferByUDP(uint8_t*,					//Send a buffer using COBS
+			uint8_t);
 		
 		//Utility functions
 		uint8_t countBits(uint32_t thingToCount);		//Number of set bits in an uint32_t, or anything else
@@ -454,6 +480,7 @@ class treacleClass	{
 			const char debugString_WiFiSpacenotSpaceenabled[17] PROGMEM = "WiFi not enabled";
 			const char debugString_LoRa[5] PROGMEM = "LoRa";
 			const char debugString_MQTT[5] PROGMEM = "MQTT";
+			const char debugString_UDP[5] PROGMEM = "UDP";
 			const char debugString_COBS[5] PROGMEM = "COBS";
 			const char debugString_newSpaceState[10] PROGMEM = "new state";
 			const char debugString_uninitialised[14] PROGMEM = "uninitialised";
@@ -520,11 +547,12 @@ class treacleClass	{
 			const char debugString_suggested_message_interval[27] PROGMEM = "suggested message interval";
 			const char debugString_MQTTspace[6] PROGMEM = "MQTT ";
 			const char debugString_connectionSpace[12] PROGMEM = "connection ";
-			const char debugString_MQTT_server[12] PROGMEM = "MQTT server";
-			const char debugString_MQTT_topic[11] PROGMEM = "MQTT topic";
-			const char debugString_MQTT_port[10] PROGMEM = "MQTT port";
-			const char debugString_MQTT_username[14] PROGMEM = "MQTT username";
-			const char debugString_MQTT_password[14] PROGMEM = "MQTT password";
+			const char debugString_server[7] PROGMEM = "server";
+			const char debugString_topic[6] PROGMEM = "topic";
+			const char debugString_username[9] PROGMEM = "username";
+			const char debugString_password[9] PROGMEM = "password";
+			const char debugString_UDPspace[5] PROGMEM = "UDP ";
+			const char debugString_port[5] PROGMEM = "port";
 			
 			void debugPrintTransportName(uint8_t transport)
 			{
