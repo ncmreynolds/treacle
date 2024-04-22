@@ -20,7 +20,7 @@ The absolute maximum number of 'nodes' in a treacle network is 80, which is due 
 
 Treacle expects to use AES-256 encryption of all packets with a fixed key and changing initialisation vector so it is passably secure to casual eavesdropping but not secure for serious purposes.
 
-The key is just set in your code so if somebody has access to that or the physical device it will be possible to recover it.Protocols
+The key is just set in your code so if somebody has access to that or the physical device it will be possible to recover it.
 
 Treacle uses other libraries to encapsulate and send packets so support is dependent on reasonably usable libraries for each platform. The starting point is always ESP32 support because ESP-Now support is a main driver of this project.
 
