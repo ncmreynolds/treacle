@@ -53,47 +53,61 @@ bool treacleClass::begin(uint8_t maxNodes)
 	//The maximum number of nodes is used in creating a load of data structures
 	maximumNumberOfNodes = maxNodes;
 	node = new nodeInfo[maximumNumberOfNodes];	//Assign at start
-	//The name is important so assign one if it is not set. This is based off MAC address on ESP32
+	//The name is important so assign one if it is not set. This is based off MAC address on ESP8266/ESP32
 	if(currentNodeName == nullptr)
 	{
 		uint8_t localMacAddress[6];
 		WiFi.macAddress(localMacAddress);
-		if(espNowEnabled() && loRaEnabled() && cobsEnabled())
-		{
-			currentNodeName = new char[22];
-			sprintf_P(currentNodeName, PSTR("EspNow_LoRa_COBS_%02X%02X"), localMacAddress[4], localMacAddress[5]);  //Add some hex from the MAC address on the end
-		}
-		else if(espNowEnabled() && loRaEnabled())
-		{
-			currentNodeName = new char[17];
-			sprintf_P(currentNodeName, PSTR("EspNow_LoRa_%02X%02X"), localMacAddress[4], localMacAddress[5]);  //Add some hex from the MAC address on the end
-		}
-		else if(espNowEnabled()&& cobsEnabled())
-		{
-			currentNodeName = new char[17];
-			sprintf_P(currentNodeName, PSTR("EspNow_COBS_%02X%02X"), localMacAddress[4], localMacAddress[5]);  //Add some hex from the MAC address on the end
-		}
-		else if(loRaEnabled() && cobsEnabled())
-		{
-			currentNodeName = new char[15];
-			sprintf_P(currentNodeName, PSTR("LoRa_COBS_%02X%02X"), localMacAddress[4], localMacAddress[5]);  //Add some hex from the MAC address on the end
-		}
-		else if(espNowEnabled())
-		{
-			currentNodeName = new char[12];
-			sprintf_P(currentNodeName, PSTR("EspNow_%02X%02X"), localMacAddress[4], localMacAddress[5]);  //Add some hex from the MAC address on the end
-		}
-		else if(loRaEnabled())
-		{
-			currentNodeName = new char[10];
-			sprintf_P(currentNodeName, PSTR("LoRa_%02X%02X"), localMacAddress[4], localMacAddress[5]);  //Add some hex from the MAC address on the end
-		}
-		else if(cobsEnabled())
-		{
-			currentNodeName = new char[10];
-			sprintf_P(currentNodeName, PSTR("COBS_%02X%02X"), localMacAddress[4], localMacAddress[5]);  //Add some hex from the MAC address on the end
-		}
-		else
+		#if defined(TREACLE_SUPPORT_ESPNOW) && defined(TREACLE_SUPPORT_LORA) && defined(TREACLE_SUPPORT_COBS)
+			if(currentNodeName == nullptr && espNowEnabled() && loRaEnabled() && cobsEnabled())
+			{
+				currentNodeName = new char[22];
+				sprintf_P(currentNodeName, PSTR("EspNow_LoRa_COBS_%02X%02X"), localMacAddress[4], localMacAddress[5]);  //Add some hex from the MAC address on the end
+			}
+		#endif
+		#if defined(TREACLE_SUPPORT_ESPNOW) && defined(TREACLE_SUPPORT_LORA)
+			if(currentNodeName == nullptr && espNowEnabled() && loRaEnabled())
+			{
+				currentNodeName = new char[17];
+				sprintf_P(currentNodeName, PSTR("EspNow_LoRa_%02X%02X"), localMacAddress[4], localMacAddress[5]);  //Add some hex from the MAC address on the end
+			}
+		#endif
+		#if defined(TREACLE_SUPPORT_ESPNOW) && defined(TREACLE_SUPPORT_COBS)
+			if(currentNodeName == nullptr && espNowEnabled()&& cobsEnabled())
+			{
+				currentNodeName = new char[17];
+				sprintf_P(currentNodeName, PSTR("EspNow_COBS_%02X%02X"), localMacAddress[4], localMacAddress[5]);  //Add some hex from the MAC address on the end
+			}
+		#endif
+		#if defined(TREACLE_SUPPORT_LORA) && defined(TREACLE_SUPPORT_COBS)
+			if(currentNodeName == nullptr && loRaEnabled() && cobsEnabled())
+			{
+				currentNodeName = new char[15];
+				sprintf_P(currentNodeName, PSTR("LoRa_COBS_%02X%02X"), localMacAddress[4], localMacAddress[5]);  //Add some hex from the MAC address on the end
+			}
+		#endif
+		#if defined(TREACLE_SUPPORT_ESPNOW)
+			if(currentNodeName == nullptr && espNowEnabled())
+			{
+				currentNodeName = new char[12];
+				sprintf_P(currentNodeName, PSTR("EspNow_%02X%02X"), localMacAddress[4], localMacAddress[5]);  //Add some hex from the MAC address on the end
+			}
+		#endif
+		#if defined(TREACLE_SUPPORT_LORA)
+			if(currentNodeName == nullptr && loRaEnabled())
+			{
+				currentNodeName = new char[10];
+				sprintf_P(currentNodeName, PSTR("LoRa_%02X%02X"), localMacAddress[4], localMacAddress[5]);  //Add some hex from the MAC address on the end
+			}
+		#endif
+		#if defined(TREACLE_SUPPORT_COBS)
+			if(currentNodeName == nullptr && cobsEnabled())
+			{
+				currentNodeName = new char[10];
+				sprintf_P(currentNodeName, PSTR("COBS_%02X%02X"), localMacAddress[4], localMacAddress[5]);  //Add some hex from the MAC address on the end
+			}
+		#endif
+		if(currentNodeName == nullptr)
 		{
 			currentNodeName = new char[10];
 			sprintf_P(currentNodeName, PSTR("node_%02X%02X"), localMacAddress[4], localMacAddress[5]);  //Add some hex from the MAC address on the end
@@ -115,36 +129,46 @@ bool treacleClass::begin(uint8_t maxNodes)
 		uint8_t numberOfInitialisedTransports = 0;
 		for(uint8_t transportIndex = 0; transportIndex < numberOfActiveTransports; transportIndex++)	//Initialise every transport that is enabled
 		{
-			if(transportIndex == espNowTransportId)
-			{
-				transport[transportIndex].initialised = initialiseEspNow();
-			}
-			else if(transportIndex == loRaTransportId)
-			{
-				transport[transportIndex].initialised = initialiseLoRa();
-				if(transport[transportIndex].initialised)
+			#if defined(TREACLE_SUPPORT_ESPNOW)
+				if(transportIndex == espNowTransportId)
 				{
-					rssi = new int16_t[maximumNumberOfNodes];	//Storage for RSSI values
-					snr = new float[maximumNumberOfNodes];		//Storage for RSSI values
-					for(uint8_t index = 0; index < maximumNumberOfNodes; index++)
+					transport[transportIndex].initialised = initialiseEspNow();
+				}
+			#endif
+			#if defined(TREACLE_SUPPORT_LORA)
+				if(transportIndex == loRaTransportId)
+				{
+					transport[transportIndex].initialised = initialiseLoRa();
+					if(transport[transportIndex].initialised)
 					{
-						rssi[index] = 0;
-						snr[index] = 0;
+						rssi = new int16_t[maximumNumberOfNodes];	//Storage for RSSI values
+						snr = new float[maximumNumberOfNodes];		//Storage for RSSI values
+						for(uint8_t index = 0; index < maximumNumberOfNodes; index++)
+						{
+							rssi[index] = 0;
+							snr[index] = 0;
+						}
 					}
 				}
-			}
-			else if(transportIndex == MQTTTransportId)
-			{
-				transport[transportIndex].initialised = initialiseMQTT();
-			}
-			else if(transportIndex == UDPTransportId)
-			{
-				transport[transportIndex].initialised = initialiseUDP();
-			}
-			else if(transportIndex == cobsTransportId)
-			{
-				transport[transportIndex].initialised = initialiseCobs();
-			}
+			#endif
+			#if defined(TREACLE_SUPPORT_MQTT)
+				if(transportIndex == MQTTTransportId)
+				{
+					transport[transportIndex].initialised = initialiseMQTT();
+				}
+			#endif
+			#if defined(TREACLE_SUPPORT_UDP)
+				if(transportIndex == UDPTransportId)
+				{
+					transport[transportIndex].initialised = initialiseUDP();
+				}
+			#endif
+			#if defined(TREACLE_SUPPORT_COBS)
+				if(transportIndex == cobsTransportId)
+				{
+					transport[transportIndex].initialised = initialiseCobs();
+				}
+			#endif
 			if(transport[transportIndex].initialised == true)
 			{
 				numberOfInitialisedTransports++;
@@ -245,26 +269,37 @@ bool treacleClass::packetInQueue(uint8_t transportId)
 }
 bool treacleClass::sendBuffer(uint8_t transportId, uint8_t* buffer, uint8_t packetSize)
 {
-	if(transportId == espNowTransportId)
-	{
-		return sendBufferByEspNow(buffer, packetSize);
-	}
-	else if(transportId == loRaTransportId)
-	{
-		return sendBufferByLoRa(buffer, packetSize);
-	}
-	else if(transportId == MQTTTransportId)
-	{
-		return sendBufferByMQTT(buffer, packetSize);
-	}
-	else if(transportId == UDPTransportId)
-	{
-		return sendBufferByUDP(buffer, packetSize);
-	}
-	else if(transportId == cobsTransportId)
-	{
-		return sendBufferByCobs(buffer, packetSize);
-	}
+	#if defined(TREACLE_SUPPORT_ESPNOW)
+		if(transportId == espNowTransportId)
+		{
+			return sendBufferByEspNow(buffer, packetSize);
+		}
+	#endif
+	#if defined(TREACLE_SUPPORT_LORA)
+		if(transportId == loRaTransportId)
+		{
+			return sendBufferByLoRa(buffer, packetSize);
+		}
+	#endif
+	#if defined(TREACLE_SUPPORT_MQTT)
+		if(transportId == MQTTTransportId)
+		{
+			return sendBufferByMQTT(buffer, packetSize);
+		}
+	#endif
+	#if defined(TREACLE_SUPPORT_UDP)
+		if(transportId == UDPTransportId)
+		{
+			return sendBufferByUDP(buffer, packetSize);
+		}
+	#endif
+	#if defined(TREACLE_SUPPORT_COBS)
+		if(transportId == cobsTransportId)
+		{
+			return sendBufferByCobs(buffer, packetSize);
+		}
+	#endif
+	return false;
 }
 /*
  *
@@ -284,1250 +319,6 @@ void treacleClass::disableEncryption(uint8_t transportId)				//Disable encryptio
 	{
 		transport[transportId].encrypted = false;
 	}
-}
-/*
- *
- *	ESP-Now functions
- *
- */
-void treacleClass::enableEspNow()
-{
-	#if defined(TREACLE_DEBUG)
-		debugPrint(debugString_treacleSpace);
-		debugPrint(debugString_enablingSpace);
-		debugPrintln(debugString_ESPNow);
-	#endif
-	espNowTransportId = numberOfActiveTransports++;
-}
-bool treacleClass::espNowEnabled()
-{
-	return espNowTransportId != 255;	//Not necessarily very useful, but it can be checked
-}
-void treacleClass::enableEspNowEncryption()				//Enable encryption for ESP-Now
-{
-	enableEncryption(espNowTransportId);
-}
-void treacleClass::disableEspNowEncryption()			//Disable encryption for ESP-Now
-{
-	disableEncryption(espNowTransportId);
-}
-bool treacleClass::espNowInitialised()
-{
-	if(espNowTransportId != 255)
-	{
-		return transport[espNowTransportId].initialised;
-	}
-	return false;
-}
-void treacleClass::setEspNowTickInterval(uint16_t tick)
-{
-	transport[espNowTransportId].defaultTick = tick;
-}
-void treacleClass::setEspNowChannel(uint8_t channel)
-{
-	preferredespNowChannel = channel;							//Sets the preferred channel. It will only be used if practical.
-}
-uint8_t treacleClass::getEspNowChannel()
-{
-	return currentEspNowChannel;								//Gets the current channel
-}
-bool treacleClass::enableEspNowLrMode()
-{
-	if(WiFi.getMode() == WIFI_STA)
-	{
-		return esp_wifi_set_protocol( WIFI_IF_STA, WIFI_PROTOCOL_LR ) == ESP_OK;
-	}
-	else
-	/*
-	else if(WiFi.getMode() == WIFI_AP)
-	{
-	}
-	else if(WiFi.getMode() == WIFI_AP_STA)
-	*/
-	{
-		return esp_wifi_set_protocol( WIFI_IF_AP, WIFI_PROTOCOL_LR ) == ESP_OK;
-	}
-}
-bool treacleClass::enableEspNow11bMode()
-{
-	if(WiFi.getMode() == WIFI_STA)
-	{
-		return esp_wifi_set_protocol( WIFI_IF_STA, WIFI_PROTOCOL_11B ) == ESP_OK;
-	}
-	else
-	{
-		return esp_wifi_set_protocol( WIFI_IF_AP, WIFI_PROTOCOL_11B ) == ESP_OK;
-	}
-}
-
-uint32_t treacleClass::getEspNowRxPackets()
-{
-	if(espNowInitialised())
-	{
-		return transport[espNowTransportId].rxPackets;
-	}
-	return 0;
-}
-uint32_t treacleClass::getEspNowTxPackets()
-{
-	if(espNowInitialised())
-	{
-		return transport[espNowTransportId].txPackets;
-	}
-	return 0;
-}
-uint32_t treacleClass::getEspNowRxPacketsDropped()
-{
-	if(espNowInitialised())
-	{
-		return transport[espNowTransportId].rxPacketsDropped;
-	}
-	return 0;
-}
-uint32_t treacleClass::getEspNowTxPacketsDropped()
-{
-	if(espNowInitialised())
-	{
-		return transport[espNowTransportId].txPacketsDropped;
-	}
-	return 0;
-}
-float treacleClass::getEspNowDutyCycle()
-{
-	if(espNowInitialised())
-	{
-		return transport[espNowTransportId].calculatedDutyCycle;
-	}
-	return 0;
-}
-uint32_t treacleClass::getEspNowDutyCycleExceptions()
-{
-	if(espNowInitialised())
-	{
-		return transport[espNowTransportId].dutyCycleExceptions;
-	}
-	return 0;
-}
-uint16_t treacleClass::getEspNowTickInterval()
-{
-	if(espNowInitialised())
-	{
-		return transport[espNowTransportId].nextTick;
-	}
-	return 0;
-}
-bool treacleClass::initialiseWiFi()								//Checks to see the state of the WiFi
-{
-	#if defined(TREACLE_DEBUG)
-		debugPrint(debugString_treacleSpace);
-		debugPrint(debugString_checkingSpace);
-		debugPrint(debugString_WiFi);
-		debugPrint(':');
-	#endif
-	if(WiFi.getMode() == WIFI_STA)
-	{
-		#if defined(TREACLE_DEBUG)
-			debugPrint(debugString_Client);
-		#endif
-	}
-	else if(WiFi.getMode() == WIFI_AP)
-	{
-		#if defined(TREACLE_DEBUG)
-			debugPrint(debugString_AP);
-			debugPrint(' ');
-			debugPrint(debugString_channel);
-			debugPrint(':');
-			debugPrintln(WiFi.channel());
-			debugPrint(' ');
-			debugPrintln(debugString_OK);
-		#endif
-		return true;
-	}
-	else if(WiFi.getMode() == WIFI_AP_STA)
-	{
-		#if defined(TREACLE_DEBUG)
-			debugPrint(debugString_ClientAndAP);
-		#endif
-	}
-	else if(WiFi.getMode() == WIFI_MODE_NULL)
-	{
-		#if defined(TREACLE_DEBUG)
-			debugPrintln(debugString_notInitialised);
-			debugPrint(debugString_treacleSpace);
-			debugPrint(debugString_initialisingSpace);
-			debugPrint(debugString_WiFi);
-			debugPrint(':');
-		#endif
-		if(WiFi.scanNetworks() > 0)								//A WiFi scan nicely sets everything up without joining a network
-		{
-			#if defined(TREACLE_DEBUG)
-				debugPrintln(debugString_OK);
-				debugPrint(debugString_treacleSpace);
-				debugPrint(debugString_WiFi);
-				debugPrint(' ');
-				debugPrint(debugString_channel);
-				debugPrint(':');
-				debugPrintln(WiFi.channel());
-			#endif
-			if(WiFi.channel() != preferredespNowChannel)		//Change channel if needed
-			{
-				changeWiFiChannel(preferredespNowChannel);
-			}
-			return true;
-		}
-		else
-		{
-			#if defined(TREACLE_DEBUG)
-				debugPrintln(debugString_failed);
-			#endif
-		}
-	}
-	else
-	{
-		#if defined(TREACLE_DEBUG)
-			debugPrint(debugString_unknown);
-			debugPrint(':');
-			debugPrint(WiFi.getMode());
-		#endif
-	}
-	return false;
-}
-bool treacleClass::changeWiFiChannel(uint8_t channel)
-{
-	if (channel > 13)
-	{
-		#if defined(ESP8266)
-		wifi_country_t wiFiCountryConfiguration;
-		wiFiCountryConfiguration.cc[0] = 'J';
-		wiFiCountryConfiguration.cc[1] = 'P';
-		wiFiCountryConfiguration.cc[2] = '\0';
-		wiFiCountryConfiguration.schan = 1;
-		wiFiCountryConfiguration.nchan = 14;
-		wiFiCountryConfiguration.policy = WIFI_COUNTRY_POLICY_MANUAL;
-		if (wifi_set_country(&wiFiCountryConfiguration) == false)
-		{
-			if(debug_uart_ != nullptr)
-			{
-				debug_uart_->print(F("\n\rUnable to set country to JP for channel 14 use"));
-			}
-			return false;
-		}
-		#elif defined ESP32
-		#endif
-	}
-	if(esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE) == ESP_OK)
-	{
-		#if defined(TREACLE_DEBUG)
-			debugPrint(debugString_treacleSpace);
-			debugPrint(debugString_WiFi);
-			debugPrint(' ');
-			debugPrint(debugString_channel);
-			debugPrint(' ');
-			debugPrint(debugString_changedSpaceTo);
-			debugPrint(':');
-			debugPrintln(WiFi.channel());
-		#endif
-		return true;
-	}
-	return false;
-}
-bool treacleClass::initialiseEspNow()
-{
-	if(initialiseWiFi())
-	{
-		#if defined(TREACLE_DEBUG)
-			debugPrint(debugString_treacleSpace);
-			debugPrint(debugString_initialisingSpace);
-			debugPrint(debugString_ESPNow);
-			debugPrint(':');
-		#endif
-		if(WiFi.getMode() == WIFI_AP)
-		{
-			if(WiFi.channel() != preferredespNowChannel)
-			{
-				changeWiFiChannel(preferredespNowChannel);
-			}
-		}
-		currentEspNowChannel = WiFi.channel();
-		if(esp_now_init() == ESP_OK)
-		{
-			if(addEspNowPeer(broadcastMacAddress))
-			{
-				if(esp_now_register_recv_cb(	//ESP-Now receive callback
-					[](const uint8_t *macAddress, const uint8_t *receivedMessage, int receivedMessageLength)
-					{
-						if(treacle.currentState != treacle.state::starting)	//Must not receive packets before the buffers are allocated
-						{
-							if(treacle.receiveBufferSize == 0 && receivedMessageLength < treacle.maximumBufferSize)	//Check the receive buffer is empty first
-							{
-								treacle.transport[treacle.espNowTransportId].rxPackets++;						//Count the packet as received
-								if(receivedMessage[(uint8_t)treacle.headerPosition::recipient] == (uint8_t)treacle.nodeId::allNodes ||
-									receivedMessage[(uint8_t)treacle.headerPosition::recipient] == treacle.currentNodeId)	//Packet is meaningful to this node
-								{
-									memcpy(&treacle.receiveBuffer,receivedMessage,receivedMessageLength);	//Copy the ESP-Now payload
-									treacle.receiveBufferSize = receivedMessageLength;						//Record the amount of payload
-									treacle.receiveBufferCrcChecked = false;								//Mark the payload as unchecked
-									treacle.receiveTransport = treacle.espNowTransportId;						//Record that it was received by ESP-Now
-									treacle.transport[treacle.espNowTransportId].rxPacketsProcessed++;		//Count the packet as processed
-								}
-							}
-							else
-							{
-								treacle.transport[treacle.espNowTransportId].rxPacketsDropped++;				//Count the drop
-							}
-						}
-					}
-				) == ESP_OK)
-				{
-					if(esp_now_register_send_cb(
-						[](const uint8_t* macAddress, esp_now_send_status_t status)	//ESP-Now send callback is used to measure airtime for duty cycle calculations
-						{
-							if(status == ESP_OK)
-							{
-								if(treacle.transport[treacle.espNowTransportId].txStartTime != 0)				//Check the initial send time was recorded
-								{
-									treacle.transport[treacle.espNowTransportId].txTime += micros()			//Add to the total transmit time
-										- treacle.transport[treacle.espNowTransportId].txStartTime;
-									treacle.transport[treacle.espNowTransportId].txStartTime = 0;				//Clear the initial send time
-								}
-								treacle.transport[treacle.espNowTransportId].txPackets++;						//Count the packet
-							}
-							else
-							{
-								treacle.transport[treacle.espNowTransportId].txPacketsDropped++;				//Count the drop
-							}
-						}
-					) == ESP_OK)
-					{
-						transport[espNowTransportId].initialised = true;
-						transport[espNowTransportId].defaultTick = maximumTickTime/5;
-						#if defined(TREACLE_DEBUG)
-							debugPrintln(debugString_OK);
-						#endif
-						return true;
-					}
-				}
-			}
-		}
-	}
-	transport[espNowTransportId].initialised = false;
-	#if defined(TREACLE_DEBUG)
-		debugPrintln(debugString_failed);
-	#endif
-	return false;
-}
-bool treacleClass::addEspNowPeer(uint8_t* macaddress)
-{
-	/*
-	#if defined(TREACLE_DEBUG)
-		debugPrint(debugString_treacleSpace);
-		debugPrint(debugString_addingSpace);
-		debugPrint(debugString_ESPNow);
-		debugPrint(debugString_peer);
-		debugPrint(':');
-	#endif
-	*/
-	esp_now_peer_info_t newPeer;
-	newPeer.peer_addr[0] = macaddress[0];
-	newPeer.peer_addr[1] = macaddress[1];
-	newPeer.peer_addr[2] = macaddress[2];
-	newPeer.peer_addr[3] = macaddress[3];
-	newPeer.peer_addr[4] = macaddress[4];
-	newPeer.peer_addr[5] = macaddress[5];
-	if(WiFi.getMode() == WIFI_STA)
-	{
-		newPeer.ifidx = WIFI_IF_STA;
-	}
-	else if(WiFi.getMode() == WIFI_AP || WiFi.getMode() == WIFI_AP_STA)
-	{
-		newPeer.ifidx = WIFI_IF_AP;
-	}
-	else	//WiFi not initialised
-	{
-		return false;
-	}
-	newPeer.channel = currentEspNowChannel;
-	newPeer.encrypt = false;
-	if(esp_now_add_peer(&newPeer) == ESP_OK)
-	{
-		#if defined(TREACLE_DEBUG)
-			//debugPrintln(debugString_OK);
-		#endif
-		return true;
-	}
-	#if defined(TREACLE_DEBUG)
-		//debugPrintln(debugString_failed);
-	#endif
-	return false;
-}
-bool treacleClass::deleteEspNowPeer(uint8_t* macaddress)
-{
-	if(esp_now_del_peer(macaddress) == ESP_OK)
-	{
-		return true;
-	}
-	return false;
-}
-
-bool treacleClass::sendBufferByEspNow(uint8_t* buffer, uint8_t packetSize)
-{
-	transport[espNowTransportId].txStartTime = micros();
-	esp_err_t espNowSendResult = esp_now_send(broadcastMacAddress, buffer, (size_t)packetSize);
-	if(espNowSendResult == ESP_OK)
-	{
-		return true;	//The send callback function records success/fail and txTime from here on
-	}
-	else
-	{
-		transport[espNowTransportId].txPacketsDropped++;		//Record the drop
-		if(WiFi.channel() != currentEspNowChannel)			//Channel has changed, alter the peer address
-		{
-			if(deleteEspNowPeer(broadcastMacAddress))		//This could perhaps be changed to modify the existing peer but this should be infrequent
-			{
-				addEspNowPeer(broadcastMacAddress);
-			}
-		}
-	}
-	transport[espNowTransportId].txStartTime = 0;
-	return false;
-}
-/*
- *
- *	LoRa functions
- *
- */
-void treacleClass::setLoRaPins(int8_t cs, int8_t reset, int8_t irq)
-{
-	loRaCSpin = cs;						//LoRa radio chip select pin
-	loRaResetPin = reset;				//LoRa radio reset pin
-	loRaIrqPin = irq;					//LoRa radio interrupt pin
-}
-void treacleClass::setLoRaFrequency(uint32_t mhz)
-{
-	loRaFrequency = mhz;
-}
-void treacleClass::enableLoRa()
-{
-	#if defined(TREACLE_DEBUG)
-		debugPrint(debugString_treacleSpace);
-		debugPrint(debugString_enablingSpace);
-		debugPrintln(debugString_LoRa);
-	#endif
-	loRaTransportId = numberOfActiveTransports++;
-}
-bool treacleClass::loRaEnabled()
-{
-	return loRaTransportId != 255;	//Not necessarily very useful, but it can be checked
-}
-bool treacleClass::initialiseLoRa()
-{
-	#if defined(TREACLE_DEBUG)
-		debugPrint(debugString_treacleSpace);
-		debugPrint(debugString_initialisingSpace);
-		debugPrint(debugString_LoRa);
-		debugPrint(':');
-	#endif
-	if(loRaIrqPin != -1)
-	{
-		LoRa.setPins(loRaCSpin, loRaResetPin, loRaIrqPin);		//Set CS, Reset & IRQ pin
-	}
-	else
-	{
-		LoRa.setPins(loRaCSpin, loRaResetPin);					//Set CS & Reset only
-	}
-	if (LoRa.begin(loRaFrequency) == true)						//This will hang of CS/IRQ pin not set appropriately
-	{
-		LoRa.setTxPower(loRaTxPower);							//Set TX power
-		LoRa.setSpreadingFactor(loRaSpreadingFactor);			//Set spreading factor
-		LoRa.setSignalBandwidth(loRaSignalBandwidth);			//Set badwidth
-		LoRa.setGain(loRaRxGain);
-		LoRa.setSyncWord(loRaSyncWord);							//Set sync word
-		LoRa.enableCrc();										//Enable CRC check
-		#if defined(TREACLE_DEBUG)
-			debugPrintln(debugString_OK);
-		#endif
-		transport[loRaTransportId].initialised = true;			//Mark as initialised
-		transport[loRaTransportId].defaultTick =maximumTickTime;//Set default tick timer
-		if(loRaIrqPin != -1)									//Callbacks on IRQ pin
-		{
-			LoRa.onTxDone(										//Send callback function
-				[]() {
-					//Serial.println("LORA SENT");
-					if(treacle.transport[treacle.loRaTransportId].txStartTime != 0)			//Check the initial send time was recorded
-					{
-						treacle.transport[treacle.loRaTransportId].txTime += micros()			//Add to the total transmit time
-							- treacle.transport[treacle.loRaTransportId].txStartTime;
-						treacle.transport[treacle.loRaTransportId].txStartTime = 0;			//Clear the initial send time
-					}
-					treacle.transport[treacle.loRaTransportId].txPackets++;					//Count the packet
-				}
-			);
-			LoRa.onReceive(
-				[](int receivedMessageLength) {
-					//Serial.println("LORA RECEIVED");
-					if(receivedMessageLength > 0)
-					{
-						if(treacle.receiveBufferSize == 0 && receivedMessageLength < treacle.maximumBufferSize)
-						{
-							treacle.transport[treacle.loRaTransportId].rxPackets++;				//Count the packet as received
-							if(LoRa.peek() == (uint8_t)treacle.nodeId::allNodes ||
-								LoRa.peek() == treacle.currentNodeId)							//Packet is meaningful to this node
-							{
-								LoRa.readBytes(treacle.receiveBuffer, receivedMessageLength);	//Copy the LoRa payload
-								treacle.receiveBufferSize = receivedMessageLength;				//Record the amount of payload
-								treacle.receiveBufferCrcChecked = false;						//Mark the payload as unchecked
-								treacle.receiveTransport = treacle.loRaTransportId;				//Record that it was received by ESP-Now
-								treacle.transport[treacle.loRaTransportId].rxPacketsProcessed++;//Count the packet as processed
-							}
-							return;
-						}
-						else
-						{
-							treacle.transport[treacle.loRaTransportId].rxPacketsDropped++;		//Count the drop
-						}
-						while(LoRa.available())													//Drop the packet
-						{
-							LoRa.read();
-						}
-					}
-				}
-			);
-		}
-		LoRa.receive();											//Start LoRa reception
-	}
-	else
-	{
-		#if defined(TREACLE_DEBUG)
-			debugPrintln(debugString_failed);
-		#endif
-		transport[loRaTransportId].initialised = false;			//Mark as not initialised
-	}
-	return transport[loRaTransportId].initialised;
-}
-bool treacleClass::loRaInitialised()
-{
-	if(loRaTransportId != 255)
-	{
-		return transport[loRaTransportId].initialised;
-	}
-	return false;
-}
-uint32_t treacleClass::getLoRaRxPackets()
-{
-	if(loRaInitialised())
-	{
-		return transport[loRaTransportId].rxPackets;
-	}
-	return 0;
-}
-uint32_t treacleClass::getLoRaTxPackets()
-{
-	if(loRaInitialised())
-	{
-		return transport[loRaTransportId].txPackets;
-	}
-	return 0;
-}
-uint32_t treacleClass::getLoRaRxPacketsDropped()
-{
-	if(loRaInitialised())
-	{
-		return transport[loRaTransportId].rxPacketsDropped;
-	}
-	return 0;
-}
-uint32_t treacleClass::getLoRaTxPacketsDropped()
-{
-	if(loRaInitialised())
-	{
-		return transport[loRaTransportId].txPacketsDropped;
-	}
-	return 0;
-}
-float treacleClass::getLoRaDutyCycle()
-{
-	if(loRaInitialised())
-	{
-		return transport[loRaTransportId].calculatedDutyCycle;
-	}
-	return 0;
-}
-uint32_t treacleClass::getLoRaDutyCycleExceptions()
-{
-	if(loRaInitialised())
-	{
-		return transport[loRaTransportId].dutyCycleExceptions;
-	}
-	return 0;
-}
-void treacleClass::setLoRaTickInterval(uint16_t tick)
-{
-	transport[loRaTransportId].defaultTick = tick;
-}
-uint16_t treacleClass::getLoRaTickInterval()
-{
-	if(loRaInitialised())
-	{
-		return transport[loRaTransportId].nextTick;
-	}
-	return 0;
-}
-uint8_t treacleClass::getLoRaTxPower()
-{
-	if(loRaInitialised())
-	{
-		return loRaTxPower;
-	}
-	return 0;
-}
-void treacleClass::setLoRaTxPower(uint8_t value)
-{
-	loRaTxPower = value;
-}
-void treacleClass::setLoRaSpreadingFactor(uint8_t value)
-{
-	loRaSpreadingFactor = value;
-}
-void treacleClass::setLoRaSignalBandwidth(uint32_t value)
-{
-	loRaSignalBandwidth = value;
-}
-void treacleClass::setLoRaRxGain(uint8_t value)
-{
-	loRaRxGain = value;
-}
-uint8_t treacleClass::getLoRaSpreadingFactor()
-{
-	if(loRaInitialised())
-	{
-		return loRaSpreadingFactor;
-	}
-	return 0;
-}
-uint32_t treacleClass::getLoRaSignalBandwidth()
-{
-	if(loRaInitialised())
-	{
-		return loRaSignalBandwidth;
-	}
-	return 0;
-}
-bool treacleClass::sendBufferByLoRa(uint8_t* buffer, uint8_t packetSize)
-{
-	if(LoRa.beginPacket())
-	{
-		LoRa.write(buffer, packetSize);
-		if(loRaIrqPin == -1)															//No LoRa IRQ, do this synchronously
-		{
-			transport[loRaTransportId].txStartTime = micros();
-			if(LoRa.endPacket())
-			{
-				transport[loRaTransportId].txTime += micros()			//Add to the total transmit time
-					- transport[loRaTransportId].txStartTime;
-				transport[loRaTransportId].txStartTime = 0;			//Clear the initial send time
-				transport[loRaTransportId].txPackets++;				//Count the packet
-				return true;
-			}
-		}
-		else
-		{
-			transport[loRaTransportId].txStartTime = micros();
-			if(LoRa.endPacket(true))
-			{
-				return true;
-			}
-		}
-	}
-	transport[loRaTransportId].txStartTime = 0;
-	return false;
-}
-bool treacleClass::receiveLoRa()
-{
-	uint8_t receivedMessageLength = LoRa.parsePacket();
-	if(receivedMessageLength > 0)
-	{
-		if(receiveBufferSize == 0 && receivedMessageLength < maximumBufferSize)
-		{
-			transport[loRaTransportId].rxPackets++;						//Count the packet as received
-			if(LoRa.peek() == (uint8_t)nodeId::allNodes ||
-				LoRa.peek() == currentNodeId)							//Packet is meaningful to this node
-			{
-				lastLoRaRssi = LoRa.packetRssi();						//Record RSSI and SNR
-				lastLoRaSNR = LoRa.packetSnr();
-				LoRa.readBytes(receiveBuffer, receivedMessageLength);	//Copy the LoRa payload
-				receiveBufferSize = receivedMessageLength;				//Record the amount of payload
-				receiveBufferCrcChecked = false;						//Mark the payload as unchecked
-				receiveTransport = loRaTransportId;						//Record that it was received by ESP-Now
-				transport[loRaTransportId].rxPacketsProcessed++;		//Count the packet as processed
-				return true;
-			}
-		}
-		else
-		{
-			transport[loRaTransportId].rxPacketsDropped++;				//Count the drop
-		}
-		while(LoRa.available())											//Drop the packet
-		{
-			LoRa.read();
-		}
-	}
-	return false;
-}
-/*
- *
- *	MQTT functions
- *
- */
-void treacleClass::setMQTTserver(String server)
-{
-	setMQTTserver(server.c_str());
-}
-void treacleClass::setMQTTserver(char* server)
-{
-	if(server != nullptr)
-	{
-		if(MQTTserver != nullptr)
-		{
-			delete MQTTserver;
-		}
-		MQTTserver = new char[strlen(server) + 1];
-		strlcpy(MQTTserver, server, strlen(server) + 1);
-		#if defined(TREACLE_DEBUG)
-			debugPrint(debugString_treacleSpace);
-			debugPrint(debugString_MQTTspace);
-			debugPrint(debugString_server);
-			debugPrint(':');
-			debugPrintStringln(MQTTserver);
-		#endif
-	}
-}
-void treacleClass::setMQTTserver(IPAddress address)
-{
-	MQTTserverIp = address;
-}
-void treacleClass::setMQTTtopic(String topic)
-{
-	setMQTTtopic(topic.c_str());
-}
-void treacleClass::setMQTTtopic(char* topic)
-{
-	if(topic != nullptr)
-	{
-		if(MQTTtopic != nullptr)
-		{
-			delete MQTTtopic;
-		}
-		MQTTtopic = new char[strlen(topic) + 1];
-		strlcpy(MQTTtopic, topic, strlen(topic) + 1);
-		#if defined(TREACLE_DEBUG)
-			debugPrint(debugString_treacleSpace);
-			debugPrint(debugString_MQTTspace);
-			debugPrint(debugString_topic);
-			debugPrint(':');
-			debugPrintStringln(MQTTtopic);
-		#endif
-	}
-}
-void treacleClass::setMQTTport(uint16_t port)
-{
-	MQTTport = port;
-	#if defined(TREACLE_DEBUG)
-		debugPrint(debugString_treacleSpace);
-		debugPrint(debugString_MQTTspace);
-		debugPrint(debugString_port);
-		debugPrint(':');
-		debugPrintln(MQTTport);
-	#endif
-}
-void treacleClass::setMQTTusername(String username)
-{
-	setMQTTusername(username.c_str());
-}
-void treacleClass::setMQTTusername(char* username)
-{
-	if(username != nullptr)
-	{
-		if(MQTTusername != nullptr)
-		{
-			delete MQTTusername;
-		}
-		MQTTusername = new char[strlen(username) + 1];
-		strlcpy(MQTTusername, username, strlen(username) + 1);
-		#if defined(TREACLE_DEBUG)
-			debugPrint(debugString_treacleSpace);
-			debugPrint(debugString_MQTTspace);
-			debugPrint(debugString_username);
-			debugPrint(':');
-			debugPrintStringln(MQTTusername);
-		#endif
-	}
-}
-void treacleClass::setMQTTpassword(String password)
-{
-	setMQTTpassword(password.c_str());
-}
-void treacleClass::setMQTTpassword(char* password)
-{
-	if(password != nullptr)
-	{
-		if(MQTTpassword != nullptr)
-		{
-			delete MQTTpassword;
-		}
-		MQTTpassword = new char[strlen(password) + 1];
-		strlcpy(MQTTpassword, password, strlen(password) + 1);
-		#if defined(TREACLE_DEBUG)
-			debugPrint(debugString_treacleSpace);
-			debugPrint(debugString_MQTTspace);
-			debugPrint(debugString_password);
-			debugPrint(':');
-			debugPrintStringln(MQTTpassword);
-		#endif
-	}
-}
-void treacleClass::enableMQTT()
-{
-	#if defined(TREACLE_DEBUG)
-		debugPrint(debugString_treacleSpace);
-		debugPrint(debugString_enablingSpace);
-		debugPrintln(debugString_MQTT);
-	#endif
-	MQTTTransportId = numberOfActiveTransports++;
-}
-bool treacleClass::MQTTEnabled()
-{
-	return MQTTTransportId != 255;	//Not necessarily very useful, but it can be checked
-}
-bool treacleClass::initialiseMQTT()
-{
-	#if defined(TREACLE_DEBUG)
-		debugPrint(debugString_treacleSpace);
-		debugPrint(debugString_initialisingSpace);
-		debugPrint(debugString_MQTT);
-		debugPrint(':');
-	#endif
-	if(MQTTserver != nullptr || (MQTTserverIp[0] != 0 && MQTTserverIp[1] != 0 && MQTTserverIp[2] != 0 && MQTTserverIp[3] != 0))
-	{
-		//mqttClient = new WiFiClient;
-		mqtt = new PubSubClient(mqttClient);
-		if(MQTTserver != nullptr)
-		{
-			mqtt->setServer(MQTTserver, MQTTport);
-		}
-		else
-		{
-			mqtt->setServer(MQTTserverIp, MQTTport);
-		}
-		mqtt->setCallback(
-			[](char* topic, byte* receivedMessage, unsigned int receivedMessageLength)
-			{
-				#if defined(TREACLE_DEBUG)
-					/*
-					treacle.debugPrint(PSTR("MQTT message on topic: "));
-					treacle.debugPrint(topic);
-					treacle.debugPrint(' ');
-					for (uint16_t i = 0; i < receivedMessageLength; i++)
-					{
-						treacle.debugPrint((uint8_t)receivedMessage[i]);
-						treacle.debugPrint(' ');
-					}
-					treacle.debugPrintln();
-					*/
-				#endif
-				if(treacle.receiveBufferSize == 0 && receivedMessageLength < treacle.maximumBufferSize)
-				{
-					if(receivedMessage[1] != treacle.currentNodeId)	//MQTT will send you your own messages unless configured specifically not to, so ignore them
-					{
-						treacle.transport[treacle.MQTTTransportId].rxPackets++;						//Count the packet as received
-						if(receivedMessage[0] == (uint8_t)treacle.nodeId::allNodes ||
-							receivedMessage[0] == treacle.currentNodeId)							//Packet is meaningful to this node
-						{
-							memcpy(treacle.receiveBuffer, receivedMessage, receivedMessageLength);	//Copy the MQTT payload into the receive buffer
-							treacle.receiveBufferSize = receivedMessageLength;						//Record the amount of payload
-							treacle.receiveBufferCrcChecked = false;								//Mark the payload as unchecked
-							treacle.receiveTransport = treacle.MQTTTransportId;						//Record that it was received by ESP-Now
-							treacle.transport[treacle.MQTTTransportId].rxPacketsProcessed++;		//Count the packet as processed
-						}
-					}
-					return;
-				}
-				else
-				{
-					treacle.transport[treacle.MQTTTransportId].rxPacketsDropped++;					//Count the drop
-				}
-			}
-		);
-		if(true)
-		{
-			#if defined(TREACLE_DEBUG)
-				debugPrintln(debugString_OK);
-			#endif
-			transport[MQTTTransportId].initialised = true;				//Mark as initialised
-			transport[MQTTTransportId].defaultTick = maximumTickTime/5;//Set default tick timer
-		}
-		else
-		{
-			#if defined(TREACLE_DEBUG)
-				debugPrintln(debugString_failed);
-			#endif
-			transport[MQTTTransportId].initialised = false;				//Mark as not initialised
-		}
-	}
-	else
-	{
-		#if defined(TREACLE_DEBUG)
-			debugPrintln(debugString_failed);
-		#endif
-		transport[MQTTTransportId].initialised = false;					//Mark as not initialised
-	}
-	return transport[MQTTTransportId].initialised;
-}
-void treacleClass::connectToMQTTserver()
-{
-	#if defined(TREACLE_DEBUG)
-		debugPrint(debugString_treacleSpace);
-		debugPrint(debugString_initialisingSpace);
-		debugPrint(debugString_MQTTspace);
-		debugPrint(debugString_connectionSpace);
-		debugPrint(debugString_toSpace);
-		if(MQTTserver != nullptr)
-		{
-			debugPrint(MQTTserver);
-		}
-		else
-		{
-			debugPrint(MQTTserverIp);
-		}
-		debugPrint(' ');
-	#endif
-	if(MQTTtopic == nullptr)
-	{
-		MQTTtopic = new char[strlen(MQTTdefaultTopic) + 1];
-		strlcpy(MQTTtopic, MQTTdefaultTopic, strlen(MQTTdefaultTopic)+1);
-	}
-	if(mqtt->connect(currentNodeName))
-	{
-		#if defined(TREACLE_DEBUG)
-			debugPrintln(debugString_OK);
-		#endif
-		mqtt->subscribe(MQTTtopic);
-	}
-	else
-	{
-		#if defined(TREACLE_DEBUG)
-			debugPrint(debugString_failed);
-			debugPrintln(mqtt->state());
-		#endif
-	}
-}
-#if defined(TREACLE_DEBUG)
-	
-#endif
-bool treacleClass::sendBufferByMQTT(uint8_t* buffer, uint8_t packetSize)
-{
-	transport[MQTTTransportId].txStartTime = micros();
-	if(mqtt->publish(MQTTtopic, buffer, packetSize))
-	{
-		transport[MQTTTransportId].txTime += micros()			//Add to the total transmit time
-			- transport[MQTTTransportId].txStartTime;
-		transport[MQTTTransportId].txStartTime = 0;				//Clear the initial send time
-		transport[MQTTTransportId].txPackets++;					//Count the packet
-		return true;
-	}
-	transport[MQTTTransportId].txStartTime = 0;
-	return false;
-}
-bool treacleClass::MQTTInitialised()
-{
-	if(MQTTTransportId != 255)
-	{
-		return transport[MQTTTransportId].initialised;
-	}
-	return false;
-}
-uint32_t treacleClass::getMQTTRxPackets()
-{
-	if(MQTTInitialised())
-	{
-		return transport[MQTTTransportId].rxPackets;
-	}
-	return 0;
-}
-uint32_t treacleClass::getMQTTTxPackets()
-{
-	if(MQTTInitialised())
-	{
-		return transport[MQTTTransportId].txPackets;
-	}
-	return 0;
-}
-uint32_t treacleClass::getMQTTRxPacketsDropped()
-{
-	if(MQTTInitialised())
-	{
-		return transport[MQTTTransportId].rxPacketsDropped;
-	}
-	return 0;
-}
-uint32_t treacleClass::getMQTTTxPacketsDropped()
-{
-	if(MQTTInitialised())
-	{
-		return transport[MQTTTransportId].txPacketsDropped;
-	}
-	return 0;
-}
-float treacleClass::getMQTTDutyCycle()
-{
-	if(MQTTInitialised())
-	{
-		return transport[MQTTTransportId].calculatedDutyCycle;
-	}
-	return 0;
-}
-uint32_t treacleClass::getMQTTDutyCycleExceptions()
-{
-	if(MQTTInitialised())
-	{
-		return transport[MQTTTransportId].dutyCycleExceptions;
-	}
-	return 0;
-}
-void treacleClass::setMQTTTickInterval(uint16_t tick)
-{
-	transport[MQTTTransportId].defaultTick = tick;
-}
-uint16_t treacleClass::getMQTTTickInterval()
-{
-	if(MQTTInitialised())
-	{
-		return transport[MQTTTransportId].nextTick;
-	}
-	return 0;
-}
-/*
- *
- *	UDP functions
- *
- */
-void treacleClass::setUDPMulticastAddress(IPAddress address)
-{
-	udpMulticastAddress = address;
-}
-void treacleClass::setUDPport(uint16_t port)
-{
-	udpPort = port;
-	#if defined(TREACLE_DEBUG)
-		debugPrint(debugString_treacleSpace);
-		debugPrint(debugString_UDPspace);
-		debugPrint(debugString_port);
-		debugPrint(':');
-		debugPrintln(udpPort);
-	#endif
-}
-void treacleClass::enableUDP()
-{
-	#if defined(TREACLE_DEBUG)
-		debugPrint(debugString_treacleSpace);
-		debugPrint(debugString_enablingSpace);
-		debugPrintln(debugString_UDP);
-	#endif
-	UDPTransportId = numberOfActiveTransports++;
-}
-bool treacleClass::UDPEnabled()
-{
-	return UDPTransportId != 255;	//Not necessarily very useful, but it can be checked
-}
-bool treacleClass::initialiseUDP()
-{
-	#if defined(TREACLE_DEBUG)
-		debugPrint(debugString_treacleSpace);
-		debugPrint(debugString_initialisingSpace);
-		debugPrint(debugString_UDP);
-		debugPrint(':');
-	#endif
-	udp = new AsyncUDP;
-	if(udp->listenMulticast(udpMulticastAddress, udpPort))
-	{
-        udp->onPacket(
-			[](AsyncUDPPacket receivedMessage)
-			{
-				#if defined(TREACLE_DEBUG)
-					/*
-					treacle.debugPrint("UDP Packet Type: ");
-					treacle.debugPrint(receivedMessage.isBroadcast()?"Broadcast":receivedMessage.isMulticast()?"Multicast":"Unicast");
-					treacle.debugPrint(", From: ");
-					treacle.debugPrint(receivedMessage.remoteIP());
-					treacle.debugPrint(":");
-					treacle.debugPrint(receivedMessage.remotePort());
-					treacle.debugPrint(", To: ");
-					treacle.debugPrint(receivedMessage.localIP());
-					treacle.debugPrint(":");
-					treacle.debugPrint(receivedMessage.localPort());
-					treacle.debugPrint(", Length: ");
-					treacle.debugPrint(receivedMessage.length());
-					//Serial.print(", Data: ");
-					//Serial.write(receivedMessage.data(), receivedMessage.length());
-					treacle.debugPrintln();
-					*/
-				#endif
-				if(treacle.receiveBufferSize == 0 && receivedMessage.length() < treacle.maximumBufferSize)
-				{
-					treacle.transport[treacle.UDPTransportId].rxPackets++;						//Count the packet as received
-					if(receivedMessage.data()[0] == (uint8_t)treacle.nodeId::allNodes ||
-						receivedMessage.data()[0] == treacle.currentNodeId)						//Packet is meaningful to this node
-					{
-						memcpy(treacle.receiveBuffer, receivedMessage.data(), receivedMessage.length());	//Copy the UDP payload into the receive buffer
-						treacle.receiveBufferSize = receivedMessage.length();								//Record the amount of payload
-						treacle.receiveBufferCrcChecked = false;											//Mark the payload as unchecked
-						treacle.receiveTransport = treacle.UDPTransportId;									//Record that it was received by UDP
-						treacle.transport[treacle.UDPTransportId].rxPacketsProcessed++;						//Count the packet as processed
-					}
-					return;
-				}
-				else
-				{
-					treacle.transport[treacle.UDPTransportId].rxPacketsDropped++;					//Count the drop
-				}
-			});
-		#if defined(TREACLE_DEBUG)
-			debugPrintln(debugString_OK);
-		#endif
-		transport[UDPTransportId].initialised = true;				//Mark as initialised
-		transport[UDPTransportId].defaultTick = maximumTickTime/10;	//Set default tick timer
-	}
-	else
-	{
-		#if defined(TREACLE_DEBUG)
-			debugPrintln(debugString_failed);
-		#endif
-		transport[UDPTransportId].initialised = false;				//Mark as not initialised
-	}
-	return transport[UDPTransportId].initialised;
-}
-bool treacleClass::sendBufferByUDP(uint8_t* buffer, uint8_t packetSize)
-{
-	transport[UDPTransportId].txStartTime = micros();
-	if(udp->write(buffer, packetSize))
-	{
-		transport[UDPTransportId].txTime += micros()			//Add to the total transmit time
-			- transport[UDPTransportId].txStartTime;
-		transport[UDPTransportId].txStartTime = 0;				//Clear the initial send time
-		transport[UDPTransportId].txPackets++;					//Count the packet
-		return true;
-	}
-	transport[UDPTransportId].txStartTime = 0;
-	return false;
-}
-bool treacleClass::UDPInitialised()
-{
-	if(UDPTransportId != 255)
-	{
-		return transport[UDPTransportId].initialised;
-	}
-	return false;
-}
-uint32_t treacleClass::getUDPRxPackets()
-{
-	if(UDPInitialised())
-	{
-		return transport[UDPTransportId].rxPackets;
-	}
-	return 0;
-}
-uint32_t treacleClass::getUDPTxPackets()
-{
-	if(UDPInitialised())
-	{
-		return transport[UDPTransportId].txPackets;
-	}
-	return 0;
-}
-uint32_t treacleClass::getUDPRxPacketsDropped()
-{
-	if(UDPInitialised())
-	{
-		return transport[UDPTransportId].rxPacketsDropped;
-	}
-	return 0;
-}
-uint32_t treacleClass::getUDPTxPacketsDropped()
-{
-	if(UDPInitialised())
-	{
-		return transport[UDPTransportId].txPacketsDropped;
-	}
-	return 0;
-}
-float treacleClass::getUDPDutyCycle()
-{
-	if(UDPInitialised())
-	{
-		return transport[UDPTransportId].calculatedDutyCycle;
-	}
-	return 0;
-}
-uint32_t treacleClass::getUDPDutyCycleExceptions()
-{
-	if(UDPInitialised())
-	{
-		return transport[UDPTransportId].dutyCycleExceptions;
-	}
-	return 0;
-}
-void treacleClass::setUDPTickInterval(uint16_t tick)
-{
-	transport[UDPTransportId].defaultTick = tick;
-}
-uint16_t treacleClass::getUDPTickInterval()
-{
-	if(UDPInitialised())
-	{
-		return transport[UDPTransportId].nextTick;
-	}
-	return 0;
-}
-/*
- *
- *	COBS functions
- *
- */
-void treacleClass::enableCobs()
-{
-	#if defined(TREACLE_DEBUG)
-		debugPrint(debugString_treacleSpace);
-		debugPrint(debugString_enablingSpace);
-		debugPrint(debugString_COBS);
-	#endif
-	cobsTransportId = numberOfActiveTransports++;
-}
-bool treacleClass::cobsEnabled()
-{
-	return cobsTransportId != 255;	//Not necessarily very useful, but it can be checked
-}
-bool treacleClass::cobsInitialised()
-{
-	if(cobsTransportId != 255)
-	{
-		return transport[cobsTransportId].initialised;
-	}
-	return false;
-}
-bool treacleClass::initialiseCobs()
-{
-	#if defined(TREACLE_DEBUG)
-		debugPrint(debugString_treacleSpace);
-		debugPrint(debugString_initialisingSpace);
-		debugPrint(debugString_COBS);
-		debugPrint(':');
-		debugPrintln(debugString_failed);
-	#endif
-	transport[cobsTransportId].defaultTick = maximumTickTime - 10;	//Set default tick timer
-	return false;
-}
-bool treacleClass::sendBufferByCobs(uint8_t* buffer, uint8_t packetSize)
-{
-	return false;
 }
 /*
  *
@@ -1590,9 +381,11 @@ void treacleClass::setEncryptionKey(uint8_t* key)	//Set the encryption key
 		debugPrintln(debugString_encryption_key);
 	#endif
 	encryptionKey = key;
-	#if defined(ESP32) && !defined(TREACLE_OBFUSCATE_ONLY)
-		esp_aes_init(&context);							//Initialise the AES context
-		esp_aes_setkey(&context, encryptionKey, 128);	//Set the key
+	#if defined(TREACLE_ENCRYPT_WITH_CBC)
+		#if defined(ESP32)
+			esp_aes_init(&context);							//Initialise the AES context
+			esp_aes_setkey(&context, encryptionKey, 128);	//Set the key
+		#endif
 	#endif
 }
 bool treacleClass::encryptPayload(uint8_t* buffer, uint8_t& packetSize)	//Pad the buffer if necessary and encrypt the payload
@@ -1616,25 +409,48 @@ bool treacleClass::encryptPayload(uint8_t* buffer, uint8_t& packetSize)	//Pad th
 			debugPrint(' ');
 		#endif
 	}
-	#if defined(TREACLE_OBFUSCATE_ONLY)
-		for(uint8_t bufferIndex = (uint8_t)headerPosition::blockIndex; bufferIndex < packetSize; bufferIndex++)
-		{
-			buffer[bufferIndex] = buffer[bufferIndex] ^
-				encryptionKey[bufferIndex%encryptionBlockSize];							//This is obfuscation only, for testing.
-		}
-	#else
+	#if defined(TREACLE_ENCRYPT_WITH_CBC) || defined(TREACLE_ENCRYPT_WITH_EAX)
+		uint8_t encryptedData[packetSize - (uint8_t)headerPosition::blockIndex];		//Temporary storage for the encryted data
 		uint8_t initialisationVector[16];												//Allocate an initialisation vector
 		memcpy(&initialisationVector[0],  buffer, 4);									//Use the first four bytes of the packet, repeated for the initialisation vector
 		memcpy(&initialisationVector[4],  buffer, 4);
 		memcpy(&initialisationVector[8],  buffer, 4);
 		memcpy(&initialisationVector[12], buffer, 4);
-		uint8_t encryptedData[packetSize - (uint8_t)headerPosition::blockIndex];		//Temporary storage for the encryted data
-		esp_aes_crypt_cbc(&context, ESP_AES_ENCRYPT,									//Do the encryption
-			packetSize - (uint8_t)headerPosition::blockIndex,							//Length of the data to encrypt
-			initialisationVector,														//Initialisation vector
-			&buffer[(uint8_t)headerPosition::blockIndex],								//The point to start encrypting from
-			encryptedData);																//Destination for the encrypted version
+		#if defined(TREACLE_ENCRYPT_WITH_CBC)
+			#if defined(ESP32)
+				esp_aes_crypt_cbc(&context, ESP_AES_ENCRYPT,									//Do the encryption
+					packetSize - (uint8_t)headerPosition::blockIndex,							//Length of the data to encrypt
+					initialisationVector,														//Initialisation vector
+					&buffer[(uint8_t)headerPosition::blockIndex],								//The point to start encrypting from
+					encryptedData);																//Destination for the encrypted version
+			#else
+				CBC<AES128> cbc;
+				cbc.setKey(encryptionKey, 16);
+				cbc.setIV(initialisationVector, 16);											//Initialisation vector
+				cbc.encrypt(																	//Do the encryption
+					encryptedData,																//Destination for the encrypted version
+					&buffer[(uint8_t)headerPosition::blockIndex],								//The point to start encrypting from
+					packetSize - (uint8_t)headerPosition::blockIndex);							//Length of the data to encrypt
+			#endif
+		#endif
+		#if defined(TREACLE_ENCRYPT_WITH_EAX)
+			EAX<AES128> eax;
+			eax.setKey(encryptionKey, 16);														//Set the encryption key
+			eax.setIV(initialisationVector, 16);												//Set the initialisation vector
+			eax.addAuthData(adata, sizeof(adata));												//Set the authentication data
+			eax.encrypt(																		//Do the encryption
+				encryptedData,																	//Destination for the encrypted version
+				&buffer[(uint8_t)headerPosition::blockIndex],									//The point to start encrypting from
+				packetSize - (uint8_t)headerPosition::blockIndex);								//Length of the data to encrypt
+			eax.computeTag(tag, sizeof(tag));
+		#endif
 		memcpy(&buffer[(uint8_t)headerPosition::blockIndex], encryptedData, packetSize - (uint8_t)headerPosition::blockIndex); //Copy the encrypted version back over the buffer
+	#else
+		for(uint8_t bufferIndex = (uint8_t)headerPosition::blockIndex; bufferIndex < packetSize; bufferIndex++)
+		{
+			buffer[bufferIndex] = buffer[bufferIndex] ^
+				encryptionKey[bufferIndex%encryptionBlockSize];							//This is obfuscation only, for testing.
+		}
 	#endif
 	#if defined(TREACLE_DEBUG)
 		debugPrint(debugString_encrypted);
@@ -1664,25 +480,37 @@ bool treacleClass::decryptPayload(uint8_t* buffer, uint8_t& packetSize)	//Decryp
 			debugPrint(' ');
 		#endif
 		buffer[(uint8_t)headerPosition::payloadType] = buffer[(uint8_t)headerPosition::payloadType] & (0xff ^ (uint8_t)payloadType::encrypted);	//Mark as not encrypted, otherwise the IV and CRC is invalid
-		#if defined(TREACLE_OBFUSCATE_ONLY)
-			for(uint8_t bufferIndex = (uint8_t)headerPosition::blockIndex; bufferIndex < packetSize; bufferIndex++)
-			{
-				buffer[bufferIndex] = buffer[bufferIndex] ^
-					encryptionKey[bufferIndex%encryptionBlockSize];							//This is obfuscation only, for testing.
-			}
-		#else
+		#if defined(TREACLE_ENCRYPT_WITH_CBC)
 			uint8_t initialisationVector[16];												//Allocate an initialisation vector
 			memcpy(&initialisationVector[0],  buffer, 4);									//Use the first four bytes of the packet, repeated for the initialisation vector
 			memcpy(&initialisationVector[4],  buffer, 4);
 			memcpy(&initialisationVector[8],  buffer, 4);
 			memcpy(&initialisationVector[12], buffer, 4);
 			uint8_t decryptedData[packetSize - (uint8_t)headerPosition::blockIndex];		//Temporary storage for the decryted data
-			esp_aes_crypt_cbc(&context, ESP_AES_DECRYPT,									//Do the decryption
-				packetSize - (uint8_t)headerPosition::blockIndex,							//Length of the data to encrypt
-				initialisationVector,														//Initialisation vector
-				&buffer[(uint8_t)headerPosition::blockIndex],								//The point to start encrypting from
-				decryptedData);																//Destination for the encrypted version
+			#if defined(TREACLE_ENCRYPT_WITH_CBC)
+				#if defined(ESP32)
+					esp_aes_crypt_cbc(&context, ESP_AES_DECRYPT,								//Do the decryption
+						packetSize - (uint8_t)headerPosition::blockIndex,						//Length of the data to encrypt
+						initialisationVector,													//Initialisation vector
+						&buffer[(uint8_t)headerPosition::blockIndex],							//The point to start encrypting from
+						decryptedData);															//Destination for the encrypted version
+				#else
+					CBC<AES128> cbc;
+					cbc.setKey(encryptionKey, 16);												//Encryption key
+					cbc.setIV(initialisationVector, 16);										//Initialisation vector
+					cbc.decrypt(																//Do the encryption
+						decryptedData,															//Destination for the encrypted version
+						&buffer[(uint8_t)headerPosition::blockIndex],							//The point to start encrypting from
+						packetSize - (uint8_t)headerPosition::blockIndex);						//Length of the data to encrypt
+				#endif
+			#endif
 			memcpy(&buffer[(uint8_t)headerPosition::blockIndex], decryptedData, packetSize - (uint8_t)headerPosition::blockIndex); //Copy the decrypted version back over the buffer
+		#else
+			for(uint8_t bufferIndex = (uint8_t)headerPosition::blockIndex; bufferIndex < packetSize; bufferIndex++)
+			{
+				buffer[bufferIndex] = buffer[bufferIndex] ^
+					encryptionKey[bufferIndex%encryptionBlockSize];							//This is obfuscation only, for testing.
+			}
 		#endif
 		return true;
 	}
@@ -1753,10 +581,22 @@ void treacleClass::changeCurrentState(state newState)
  */
 uint16_t treacleClass::minimumTickTime(uint8_t transportId)
 {
-	if(transportId == espNowTransportId) return	1000;
-	else if(transportId == loRaTransportId) return 5000;
-	else if(transportId == cobsTransportId) return 2500;
-	else return 1000;
+	#if defined(TREACLE_SUPPORT_ESPNOW)
+		if(transportId == espNowTransportId) return	1000;
+	#endif
+	#if defined(TREACLE_SUPPORT_LORA)
+		if(transportId == loRaTransportId) return 5000;
+	#endif
+	#if defined(TREACLE_SUPPORT_MQTT)
+		if(transportId == cobsTransportId) return 1000;
+	#endif
+	#if defined(TREACLE_SUPPORT_UDP)
+		if(transportId == cobsTransportId) return 500;
+	#endif
+	#if defined(TREACLE_SUPPORT_COBS)
+		if(transportId == cobsTransportId) return 2500;
+	#endif
+	return 1000;
 }
 void treacleClass::setNextTickTime()
 {
@@ -2088,11 +928,13 @@ void treacleClass::unpackPacket()
 						debugPrint(' ');
 					#endif
 					uint8_t nodeIndex = nodeIndexFromId(receiveBuffer[(uint8_t)headerPosition::sender]);								//Turn node ID into nodeIndex
-					if(receiveTransport == loRaTransportId)
-					{
-						rssi[nodeIndex] = lastLoRaRssi;																					//Record RSSI if it's a LoRa packet
-						snr[nodeIndex] = lastLoRaSNR;																					//Record SNR if it's a LoRa packet
-					}
+					#if defined(TREACLE_SUPPORT_LORA)
+						if(receiveTransport == loRaTransportId)
+						{
+							rssi[nodeIndex] = lastLoRaRssi;																					//Record RSSI if it's a LoRa packet
+							snr[nodeIndex] = lastLoRaSNR;																					//Record SNR if it's a LoRa packet
+						}
+					#endif
 					#if defined(TREACLE_DEBUG)
 						debugPrintString(node[nodeIndex].name);
 					#endif
@@ -2565,9 +1407,21 @@ uint32_t treacleClass::rxAge(uint8_t id)
 	}
 	return 0;
 }
-uint32_t treacleClass::rxReliability(uint8_t id)
+uint16_t treacleClass::rxReliability(uint8_t id)
 {
 	uint8_t nodeIndex = nodeIndexFromId(id);
+	uint16_t reliability = 0;
+	if(nodeIndex != maximumNumberOfNodes)
+	{
+		for(uint8_t index = 0; index < numberOfActiveTransports; index++)
+		{
+			if(node[nodeIndex].rxReliability[index] > reliability)
+			{
+				reliability = node[nodeIndex].rxReliability[index];
+			}
+		}
+	}
+	/*
 	if(nodeIndex != maximumNumberOfNodes)
 	{
 		if(espNowInitialised() == true)
@@ -2583,13 +1437,23 @@ uint32_t treacleClass::rxReliability(uint8_t id)
 			return node[nodeIndex].rxReliability[loRaTransportId];
 		}
 	}
-	return 0;
+	*/
+	return reliability;
 }
-uint32_t treacleClass::txReliability(uint8_t id)
+uint16_t treacleClass::txReliability(uint8_t id)
 {
 	uint8_t nodeIndex = nodeIndexFromId(id);
+	uint16_t reliability = 0;
 	if(nodeIndex != maximumNumberOfNodes)
 	{
+		for(uint8_t index = 0; index < numberOfActiveTransports; index++)
+		{
+			if(node[nodeIndex].txReliability[index] > reliability)
+			{
+				reliability = node[nodeIndex].txReliability[index];
+			}
+		}
+		/*
 		if(espNowInitialised() == true)
 		{
 			if(loRaInitialised() == true)
@@ -2602,80 +1466,9 @@ uint32_t treacleClass::txReliability(uint8_t id)
 		{
 			return node[nodeIndex].txReliability[loRaTransportId];
 		}
+		*/
 	}
-	return 0;
-}
-int16_t treacleClass::loRaRSSI(uint8_t id)
-{
-	if(loRaInitialised())
-	{
-		uint8_t nodeIndex = nodeIndexFromId(id);
-		if(nodeIndex != maximumNumberOfNodes)
-		{
-			return rssi[nodeIndex];
-		}
-	}
-	return 0;
-}
-float treacleClass::loRaSNR(uint8_t id)
-{
-	if(loRaInitialised())
-	{
-		uint8_t nodeIndex = nodeIndexFromId(id);
-		if(nodeIndex != maximumNumberOfNodes)
-		{
-			return snr[nodeIndex];
-		}
-	}
-	return 0;
-}
-uint32_t treacleClass::espNowRxReliability(uint8_t id)
-{
-	if(espNowInitialised())
-	{
-		uint8_t nodeIndex = nodeIndexFromId(id);
-		if(nodeIndex != maximumNumberOfNodes)
-		{
-			return node[nodeIndex].rxReliability[espNowTransportId];
-		}
-	}
-	return 0;
-}
-uint32_t treacleClass::espNowTxReliability(uint8_t id)
-{
-	if(espNowInitialised())
-	{
-		uint8_t nodeIndex = nodeIndexFromId(id);
-		if(nodeIndex != maximumNumberOfNodes)
-		{
-			return node[nodeIndex].txReliability[espNowTransportId];
-		}
-	}
-	return 0;
-}
-uint32_t treacleClass::loRaRxReliability(uint8_t id)
-{
-	if(loRaInitialised())
-	{
-		uint8_t nodeIndex = nodeIndexFromId(id);
-		if(nodeIndex != maximumNumberOfNodes)
-		{
-			return node[nodeIndex].rxReliability[loRaTransportId];
-		}
-	}
-	return 0;
-}
-uint32_t treacleClass::loRaTxReliability(uint8_t id)
-{
-	if(loRaInitialised())
-	{
-		uint8_t nodeIndex = nodeIndexFromId(id);
-		if(nodeIndex != maximumNumberOfNodes)
-		{
-			return node[nodeIndex].txReliability[loRaTransportId];
-		}
-	}
-	return 0;
+	return reliability;
 }
 /*
  *
@@ -2717,21 +1510,25 @@ uint32_t treacleClass::messageWaiting()
 			showStatus();
 		}
 	#endif
-	if(MQTTTransportId != 255 && transport[MQTTTransportId].initialised == true)	//Polling method for MQTT, must be enabled and initialised
-	{
-		if(!mqtt->connected())
+	#if defined(TREACLE_SUPPORT_MQTT)
+		if(MQTTTransportId != 255 && transport[MQTTTransportId].initialised == true)	//Polling method for MQTT, must be enabled and initialised
 		{
-			connectToMQTTserver();
+			if(!mqtt->connected())
+			{
+				connectToMQTTserver();
+			}
+			else
+			{
+				mqtt->loop();
+			}
 		}
-		else
+	#endif
+	#if defined(TREACLE_SUPPORT_LORA)
+		if(loRaTransportId != 255 && transport[loRaTransportId].initialised == true && loRaIrqPin == -1)	//Polling method for loRa packets, must be enabled and initialised
 		{
-			mqtt->loop();
+			receiveLoRa();
 		}
-	}
-	if(loRaTransportId != 255 && transport[loRaTransportId].initialised == true && loRaIrqPin == -1)	//Polling method for loRa packets, must be enabled and initialised
-	{
-		receiveLoRa();
-	}
+	#endif
 	if(currentState == state::uninitialised || currentState == state::starting || currentState == state::stopped)
 	{
 		return 0;						//Nothing can be sent or received in these states
@@ -2744,10 +1541,7 @@ uint32_t treacleClass::messageWaiting()
 	{
 		return 0;						//A tick has been sent, so the application can wait until next time for any data
 	}
-	//else
-	{
-		timeOutTicks();					//Potentially time out ticks from other nodes if they are not responding or the application is slow calling this
-	}
+	timeOutTicks();					//Potentially time out ticks from other nodes if they are not responding or the application is slow calling this
 	if(currentState == state::selectingId)
 	{
 		if(applicationDataPacketReceived())

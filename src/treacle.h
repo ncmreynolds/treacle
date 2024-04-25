@@ -11,27 +11,54 @@
 #include <Arduino.h>
 
 #define TREACLE_DEBUG
-//#define TREACLE_OBFUSCATE_ONLY
 
-#ifdef ESP32
+#define TREACLE_SUPPORT_ESPNOW
+//#define TREACLE_SUPPORT_LORA
+//#define TREACLE_SUPPORT_UDP
+//#define TREACLE_SUPPORT_MQTT
+//#define TREACLE_SUPPORT_COBS
+
+#define TREACLE_ENCRYPT_WITH_CBC
+//#define TREACLE_ENCRYPT_WITH_EAX
+
+#if defined(ESP8266)
+	#include <ESP8266WiFi.h>
+	#if defined(TREACLE_SUPPORT_ESPNOW)
+		#include <espnow.h>
+	#endif
+	#define ESP_OK 0
+	#if defined(TREACLE_ENCRYPT_WITH_CBC)
+		#include <CryptoAES_CBC.h>
+		#include <AES.h>
+		#include <CBC.h>
+	#endif
+#elif defined(ESP32)
 	#include <WiFi.h>
 	#include <esp_wifi.h> //Only needed for esp_wifi_set_channel()
-	extern "C"
-	{
-		#include <esp_now.h>
-		//#include <esp_wifi.h> // only for esp_wifi_set_channel()
-	}
-	#if !defined(TREACLE_OBFUSCATE_ONLY)
+	#if defined(TREACLE_SUPPORT_ESPNOW)
+		extern "C"
+		{
+			#include <esp_now.h>
+		}
+	#endif
+	#if defined(TREACLE_ENCRYPT_WITH_CBC)
 		#include <aes/esp_aes.h>
 	#endif
-	#include <AsyncUDP.h>
+	#if defined(TREACLE_SUPPORT_UDP)
+		#include <AsyncUDP.h>
+	#endif
+	#if defined(TREACLE_SUPPORT_MQTT)
+		#include <PubSubClient.h>	//Support for MQTT
+	#endif
 #endif
 
-#include <SPI.h>
-#include <LoRa.h>
+#if defined(TREACLE_SUPPORT_LORA)
+	#include <SPI.h>
+	#include <LoRa.h>
+#endif
+
 #include "CRC16.h" //A CRC16 is used to check the packet is LIKELY to be sent in a known format
 #include "CRC.h"
-#include <PubSubClient.h>	//Support for MQTT
 
 class treacleClass	{
 
@@ -39,86 +66,110 @@ class treacleClass	{
 		treacleClass();								//Constructor function
 		~treacleClass();							//Destructor function
 		//ESP-Now
-		void enableEspNow();						//Enable the ESP-Now radio
-		bool espNowEnabled();						//Is ESP-Now radio enabled?
-		bool enableEspNow11bMode();
-		bool enableEspNowLrMode();
-		void enableEspNowEncryption();				//Enable encryption for ESP-Now
-		void disableEspNowEncryption();				//Disable encryption for ESP-Now
-		bool espNowInitialised();					//Is ESP-Now radio correctly initialised?
-		void setEspNowChannel(uint8_t);				//Set the WiFi channel used for ESP-Now
-		void setEspNowTickInterval(uint16_t tick);	//Set the ESP-Now tick interval
-		uint8_t getEspNowChannel();					//Get the WiFi channel used for ESP-Now
-		uint32_t getEspNowRxPackets();				//Get packet stats
-		uint32_t getEspNowTxPackets();				//Get packet stats
-		uint32_t getEspNowRxPacketsDropped();		//Get packet stats
-		uint32_t getEspNowTxPacketsDropped();		//Get packet stats
-		float getEspNowDutyCycle();					//Get packet stats
-		uint32_t getEspNowDutyCycleExceptions();	//Get packet stats
-		uint16_t getEspNowTickInterval();			//Get time between packets
+		#if defined(TREACLE_SUPPORT_ESPNOW)
+			void enableEspNow();						//Enable the ESP-Now radio
+			bool espNowEnabled();						//Is ESP-Now radio enabled?
+			#if defined(ESP32)
+			bool enableEspNow11bMode();
+			bool enableEspNowLrMode();
+			#endif
+			void enableEspNowEncryption();				//Enable encryption for ESP-Now
+			void disableEspNowEncryption();				//Disable encryption for ESP-Now
+			bool espNowInitialised();					//Is ESP-Now radio correctly initialised?
+			void setEspNowChannel(uint8_t);				//Set the WiFi channel used for ESP-Now
+			void setEspNowTickInterval(uint16_t tick);	//Set the ESP-Now tick interval
+			uint8_t getEspNowChannel();					//Get the WiFi channel used for ESP-Now
+			uint32_t getEspNowRxPackets();				//Get packet stats
+			uint32_t getEspNowTxPackets();				//Get packet stats
+			uint32_t getEspNowRxPacketsDropped();		//Get packet stats
+			uint32_t getEspNowTxPacketsDropped();		//Get packet stats
+			float getEspNowDutyCycle();					//Get packet stats
+			uint32_t getEspNowDutyCycleExceptions();	//Get packet stats
+			uint16_t getEspNowTickInterval();			//Get time between packets
+			uint16_t espNowRxReliability(uint8_t);
+			uint16_t espNowTxReliability(uint8_t);
+			#if defined(ESP8266)
+			void esp8266sendCallback(uint8_t* macAddress,	//ESP-Now send callback is used to measure airtime for duty cycle calculations
+				uint8_t status);
+			void esp8266receiveCallback(uint8_t *macAddress,
+				uint8_t *receivedMessage, uint8_t receivedMessageLength);
+			#endif
+		#endif
 		//LoRa
-		void setLoRaPins(int8_t cs, int8_t reset,	//Set the GPIO for the LoRa radio
-			int8_t irq = -1);
-		void setLoRaFrequency(uint32_t mhz);		//Set the LoRa frequency
-		void enableLoRa();							//Enable the LoRa radio
-		bool loRaEnabled();							//Is LoRa radio enabled?
-		bool loRaInitialised();						//Is LoRa radio correctly initialised?
-		uint32_t getLoRaRxPackets();				//Get packet stats
-		uint32_t getLoRaTxPackets();				//Get packet stats
-		uint32_t getLoRaRxPacketsDropped();			//Get packet stats
-		uint32_t getLoRaTxPacketsDropped();			//Get packet stats
-		float getLoRaDutyCycle();					//Get packet stats
-		uint32_t getLoRaDutyCycleExceptions();		//Get packet stats
-		void setLoRaTickInterval(uint16_t tick);	//Set the LoRa tick interval
-		uint16_t getLoRaTickInterval();				//Get time between packets
-		uint8_t getLoRaTxPower();					//LoRa TX power
-		uint8_t getLoRaSpreadingFactor();			//LoRa spreading factor
-		uint32_t getLoRaSignalBandwidth();			//Supported values are 7.8E3, 10.4E3, 15.6E3, 20.8E3, 31.25E3, 41.7E3, 62.5E3, 125E3(default), 250E3, and 500E3.
-		void setLoRaTxPower(uint8_t);				//LoRa TX power 2-20
-		void setLoRaSpreadingFactor(uint8_t);		//LoRa spreading factor
-		void setLoRaSignalBandwidth(uint32_t);		//Supported values are 7.8E3, 10.4E3, 15.6E3, 20.8E3, 31.25E3, 41.7E3, 62.5E3, 125E3(default), 250E3, and 500E3.
-		void setLoRaRxGain(uint8_t);				//0-6, 0 = auto
+		#if defined(TREACLE_SUPPORT_LORA)
+			void setLoRaPins(int8_t cs, int8_t reset,	//Set the GPIO for the LoRa radio
+				int8_t irq = -1);
+			void setLoRaFrequency(uint32_t mhz);		//Set the LoRa frequency
+			void enableLoRa();							//Enable the LoRa radio
+			bool loRaEnabled();							//Is LoRa radio enabled?
+			bool loRaInitialised();						//Is LoRa radio correctly initialised?
+			uint32_t getLoRaRxPackets();				//Get packet stats
+			uint32_t getLoRaTxPackets();				//Get packet stats
+			uint32_t getLoRaRxPacketsDropped();			//Get packet stats
+			uint32_t getLoRaTxPacketsDropped();			//Get packet stats
+			float getLoRaDutyCycle();					//Get packet stats
+			uint32_t getLoRaDutyCycleExceptions();		//Get packet stats
+			void setLoRaTickInterval(uint16_t tick);	//Set the LoRa tick interval
+			uint16_t getLoRaTickInterval();				//Get time between packets
+			uint8_t getLoRaTxPower();					//LoRa TX power
+			uint8_t getLoRaSpreadingFactor();			//LoRa spreading factor
+			uint32_t getLoRaSignalBandwidth();			//Supported values are 7.8E3, 10.4E3, 15.6E3, 20.8E3, 31.25E3, 41.7E3, 62.5E3, 125E3(default), 250E3, and 500E3.
+			void setLoRaTxPower(uint8_t);				//LoRa TX power 2-20
+			void setLoRaSpreadingFactor(uint8_t);		//LoRa spreading factor
+			void setLoRaSignalBandwidth(uint32_t);		//Supported values are 7.8E3, 10.4E3, 15.6E3, 20.8E3, 31.25E3, 41.7E3, 62.5E3, 125E3(default), 250E3, and 500E3.
+			void setLoRaRxGain(uint8_t);				//0-6, 0 = auto
+			uint16_t loRaRxReliability(uint8_t);
+			uint16_t loRaTxReliability(uint8_t);
+			int16_t  loRaRSSI(uint8_t);
+			float    loRaSNR(uint8_t);
+		#endif
 		//MQTT
-		void enableMQTT();							//Enable MQTT
-		bool MQTTEnabled();							//Is MQTT enabled?
-		void setMQTTserver(char*);					//Set the MQTT server name
-		void setMQTTserver(IPAddress);				//Set the MQTT server IP address (IPv4)
-		void setMQTTport(uint16_t);					//Set the MQTT server, if not default
-		void setMQTTtopic(char*);					//Set the MQTT base topic, if not default (/treacle)
-		void setMQTTusername(char*);				//Set the MQTT username
-		void setMQTTpassword(char*);				//Set the MQTT password
-		void setMQTTserver(String);					//Set the MQTT server
-		void setMQTTtopic(String);					//Set the MQTT base topic, if not default (/treacle)
-		void setMQTTusername(String);				//Set the MQTT username
-		void setMQTTpassword(String);				//Set the MQTT password
-		bool MQTTInitialised();						//Is MQTT correctly initialised?
-		uint32_t getMQTTRxPackets();				//Get packet stats
-		uint32_t getMQTTTxPackets();				//Get packet stats
-		uint32_t getMQTTRxPacketsDropped();			//Get packet stats
-		uint32_t getMQTTTxPacketsDropped();			//Get packet stats
-		float getMQTTDutyCycle();					//Get packet stats
-		uint32_t getMQTTDutyCycleExceptions();		//Get packet stats
-		void setMQTTTickInterval(uint16_t tick);	//Set the interval between packets
-		uint16_t getMQTTTickInterval();				//Get interval between packets
+		#if defined(TREACLE_SUPPORT_MQTT)
+			void enableMQTT();							//Enable MQTT
+			bool MQTTEnabled();							//Is MQTT enabled?
+			void setMQTTserver(char*);					//Set the MQTT server name
+			void setMQTTserver(IPAddress);				//Set the MQTT server IP address (IPv4)
+			void setMQTTport(uint16_t);					//Set the MQTT server, if not default
+			void setMQTTtopic(char*);					//Set the MQTT base topic, if not default (/treacle)
+			void setMQTTusername(char*);				//Set the MQTT username
+			void setMQTTpassword(char*);				//Set the MQTT password
+			void setMQTTserver(String);					//Set the MQTT server
+			void setMQTTtopic(String);					//Set the MQTT base topic, if not default (/treacle)
+			void setMQTTusername(String);				//Set the MQTT username
+			void setMQTTpassword(String);				//Set the MQTT password
+			bool MQTTInitialised();						//Is MQTT correctly initialised?
+			uint32_t getMQTTRxPackets();				//Get packet stats
+			uint32_t getMQTTTxPackets();				//Get packet stats
+			uint32_t getMQTTRxPacketsDropped();			//Get packet stats
+			uint32_t getMQTTTxPacketsDropped();			//Get packet stats
+			float getMQTTDutyCycle();					//Get packet stats
+			uint32_t getMQTTDutyCycleExceptions();		//Get packet stats
+			void setMQTTTickInterval(uint16_t tick);	//Set the interval between packets
+			uint16_t getMQTTTickInterval();				//Get interval between packets
+		#endif
 		//UDP
-		void enableUDP();							//Enable UDP
-		bool UDPEnabled();							//Is UDP enabled?
-		bool UDPInitialised();						//Is UDP correctly initialised?
-		void setUDPMulticastAddress(				//Set the multicast address to use (default 224.0.1.38)
-			IPAddress address);
-		void setUDPport(uint16_t);					//Set the UDP port (default 47625)
-		uint32_t getUDPRxPackets();					//Get packet stats
-		uint32_t getUDPTxPackets();					//Get packet stats
-		uint32_t getUDPRxPacketsDropped();			//Get packet stats
-		uint32_t getUDPTxPacketsDropped();			//Get packet stats
-		float getUDPDutyCycle();					//Get packet stats
-		uint32_t getUDPDutyCycleExceptions();		//Get packet stats
-		void setUDPTickInterval(uint16_t tick);	//Set the interval between packets
-		uint16_t getUDPTickInterval();				//Get interval between packets
+		#if defined(TREACLE_SUPPORT_UDP)
+			void enableUDP();							//Enable UDP
+			bool UDPEnabled();							//Is UDP enabled?
+			bool UDPInitialised();						//Is UDP correctly initialised?
+			void setUDPMulticastAddress(				//Set the multicast address to use (default 224.0.1.38)
+				IPAddress address);
+			void setUDPport(uint16_t);					//Set the UDP port (default 47625)
+			uint32_t getUDPRxPackets();					//Get packet stats
+			uint32_t getUDPTxPackets();					//Get packet stats
+			uint32_t getUDPRxPacketsDropped();			//Get packet stats
+			uint32_t getUDPTxPacketsDropped();			//Get packet stats
+			float getUDPDutyCycle();					//Get packet stats
+			uint32_t getUDPDutyCycleExceptions();		//Get packet stats
+			void setUDPTickInterval(uint16_t tick);	//Set the interval between packets
+			uint16_t getUDPTickInterval();				//Get interval between packets
+		#endif
 		//COBS/Serial
-		void enableCobs();
-		bool cobsEnabled();
-		bool cobsInitialised();
+		#if defined(TREACLE_SUPPORT_COBS)
+			void enableCobs();
+			bool cobsEnabled();
+			bool cobsInitialised();
+		#endif
 		//Messaging
 		bool online();								//Is treacle online? ie. has this node heard back from a peer that has heard it recently
 		void goOffline();							//Actively go offline
@@ -143,14 +194,8 @@ class treacleClass	{
 		//Node status
 		bool online(uint8_t);						//Is a specific treacle node online? ie. has this node heard from it recently
 		uint32_t rxAge(uint8_t);
-		uint32_t rxReliability(uint8_t);
-		uint32_t txReliability(uint8_t);
-		uint32_t espNowRxReliability(uint8_t);
-		uint32_t espNowTxReliability(uint8_t);
-		uint32_t loRaRxReliability(uint8_t);
-		uint32_t loRaTxReliability(uint8_t);
-		int16_t  loRaRSSI(uint8_t);
-		float    loRaSNR(uint8_t);
+		uint16_t rxReliability(uint8_t);
+		uint16_t txReliability(uint8_t);
 		//General
 		void setNodeName(char* name);				//Set the node name
 		void setNodeId(uint8_t id);					//Set the nodeId
@@ -325,8 +370,10 @@ class treacleClass	{
 		void enableEncryption(uint8_t transport);		//Enable encryption for a specific transport
 		void disableEncryption(uint8_t transport);		//Disable encryption for a specific transport
 		uint8_t* encryptionKey = nullptr;				//Left null until set
-		#if defined(ESP32) && !defined(TREACLE_OBFUSCATE_ONLY)
-			esp_aes_context context;					//AES context
+		#if defined(TREACLE_ENCRYPT_WITH_CBC)
+			#if defined(ESP32)
+				esp_aes_context context;				//AES context
+			#endif
 		#endif
 		uint8_t encryptionBlockSize = 16;				//Have to pad to this
 		bool encryptPayload(uint8_t*,					//Pad the buffer if necessary and encrypt the payload
@@ -350,78 +397,88 @@ class treacleClass	{
 		bool online(uint8_t, uint8_t);					//Is a specific treacle node online for a specific protocol? ie. has this node heard from it recently
 		
 		//ESP-Now specific settings
-		uint8_t espNowTransportId = 255;				//ID assigned to this transport if enabled, 255 implies it is not
-		uint8_t broadcastMacAddress[6] = {				//Most ESP-Now communications is broadcast
-		0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
-		uint8_t preferredespNowChannel = 1;				//It may not be possible to switch to the preferred channel if it is a WiFi client
-		uint8_t currentEspNowChannel = 0;				//Track this, as it's not fixed if the device is a WiFi client
-		//ESP-Now specific functions
-		bool initialiseWiFi();							//Initialise WiFi and return result. Only changes things if WiFi is not already set up when treacle begins
-		bool changeWiFiChannel(uint8_t channel);		//Change the WiFi channel
-		bool initialiseEspNow();						//Initialise ESP-Now and return result
-		bool addEspNowPeer(uint8_t*);					//Add a peer, including relevant channel/interface for the time of addition
-		bool deleteEspNowPeer(uint8_t*);				//Delete a peer
-		bool sendBufferByEspNow(uint8_t*,				//Send a buffer using ESP-Now
-			uint8_t);
+		#if defined(TREACLE_SUPPORT_ESPNOW)
+			uint8_t espNowTransportId = 255;				//ID assigned to this transport if enabled, 255 implies it is not
+			uint8_t broadcastMacAddress[6] = {				//Most ESP-Now communications is broadcast
+			0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+			uint8_t preferredespNowChannel = 1;				//It may not be possible to switch to the preferred channel if it is a WiFi client
+			uint8_t currentEspNowChannel = 0;				//Track this, as it's not fixed if the device is a WiFi client
+			//ESP-Now specific functions
+			bool initialiseWiFi();							//Initialise WiFi and return result. Only changes things if WiFi is not already set up when treacle begins
+			bool changeWiFiChannel(uint8_t channel);		//Change the WiFi channel
+			bool initialiseEspNow();						//Initialise ESP-Now and return result
+			bool addEspNowPeer(uint8_t*);					//Add a peer, including relevant channel/interface for the time of addition
+			bool deleteEspNowPeer(uint8_t*);				//Delete a peer
+			bool sendBufferByEspNow(uint8_t*,				//Send a buffer using ESP-Now
+				uint8_t);
+		#endif
 		
 		//LoRa specific settings
-		uint8_t loRaTransportId = 255;					//ID assigned to this transport if enabled, 255 implies it is not
-		int8_t loRaCSpin = -1;							//LoRa radio chip select pin
-		int8_t loRaResetPin = -1;						//LoRa radio reset pin
-		int8_t loRaIrqPin = -1;							//LoRa radio interrupt pin
-		uint32_t loRaFrequency = 868E6;					//LoRa frequency, broadly 868 in the EU, US is 915E6, Asia 433E6
-		uint8_t loRaTxPower = 17;						//LoRa TX power
-		uint8_t loRaSpreadingFactor = 9;				//LoRa spreading factor
-		uint32_t loRaSignalBandwidth= 62.5E3;			//Supported values are 7.8E3, 10.4E3, 15.6E3, 20.8E3, 31.25E3, 41.7E3, 62.5E3, 125E3(default), 250E3, and 500E3.
-		uint8_t loRaRxGain = 0;							//0-6, 0 = auto
-		uint8_t loRaSyncWord = 0x12;					//Valid options are 0x12, 0x56, 0x78, don't use 0x34 as that is LoRaWAN
-		int16_t lastLoRaRssi = 0;						//Track RSSI as an extra indication of reachability
-		float lastLoRaSNR = 0;							//Track SNR as an extra indication of reachability
-		int16_t* rssi;									//Store last RSSI for each node, IF LoRa is enabled
-		float* snr;										//Store last SNR for each node, IF LoRa is enabled
-		//LoRa specific functions
-		bool initialiseLoRa();							//Initialise LoRa and return result
-		bool sendBufferByLoRa(uint8_t*,					//Send a buffer using ESP-Now
-			uint8_t);
-		bool receiveLoRa();								//Polling receive function
+		#if defined(TREACLE_SUPPORT_LORA)
+			uint8_t loRaTransportId = 255;					//ID assigned to this transport if enabled, 255 implies it is not
+			int8_t loRaCSpin = -1;							//LoRa radio chip select pin
+			int8_t loRaResetPin = -1;						//LoRa radio reset pin
+			int8_t loRaIrqPin = -1;							//LoRa radio interrupt pin
+			uint32_t loRaFrequency = 868E6;					//LoRa frequency, broadly 868 in the EU, US is 915E6, Asia 433E6
+			uint8_t loRaTxPower = 17;						//LoRa TX power
+			uint8_t loRaSpreadingFactor = 9;				//LoRa spreading factor
+			uint32_t loRaSignalBandwidth= 62.5E3;			//Supported values are 7.8E3, 10.4E3, 15.6E3, 20.8E3, 31.25E3, 41.7E3, 62.5E3, 125E3(default), 250E3, and 500E3.
+			uint8_t loRaRxGain = 0;							//0-6, 0 = auto
+			uint8_t loRaSyncWord = 0x12;					//Valid options are 0x12, 0x56, 0x78, don't use 0x34 as that is LoRaWAN
+			int16_t lastLoRaRssi = 0;						//Track RSSI as an extra indication of reachability
+			float lastLoRaSNR = 0;							//Track SNR as an extra indication of reachability
+			int16_t* rssi;									//Store last RSSI for each node, IF LoRa is enabled
+			float* snr;										//Store last SNR for each node, IF LoRa is enabled
+			//LoRa specific functions
+			bool initialiseLoRa();							//Initialise LoRa and return result
+			bool sendBufferByLoRa(uint8_t*,					//Send a buffer using ESP-Now
+				uint8_t);
+			bool receiveLoRa();								//Polling receive function
+		#endif
 		
 		//COBS/Serial specific settings
-		uint8_t cobsTransportId = 255;					//ID assigned to this transport if enabled, 255 implies it is not
-		Stream *cobsUart_ = nullptr;					//COBS happens over a UART
-		uint32_t cobsBaudRate = 115200;					//COBS needs a baud rate
-		//COBS/Serial specific functions
-		bool initialiseCobs();							//Initialise Cobs and return result
-		bool sendBufferByCobs(uint8_t*,					//Send a buffer using COBS
-			uint8_t);
+		#if defined(TREACLE_SUPPORT_COBS)
+			uint8_t cobsTransportId = 255;					//ID assigned to this transport if enabled, 255 implies it is not
+			Stream *cobsUart_ = nullptr;					//COBS happens over a UART
+			uint32_t cobsBaudRate = 115200;					//COBS needs a baud rate
+			//COBS/Serial specific functions
+			bool initialiseCobs();							//Initialise Cobs and return result
+			bool sendBufferByCobs(uint8_t*,					//Send a buffer using COBS
+				uint8_t);
+		#endif
 			
 		//MQTT specific settings
-		uint8_t MQTTTransportId = 255;					//ID assigned to this transport if enabled, 255 implies it is not
-		char* MQTTserver = nullptr;						//MQTT server IP address/name
-		IPAddress MQTTserverIp = {0,0,0,0};				//Allow configuration by IP
-		uint16_t MQTTport = 1883;						//MQTT server port
-		char* MQTTusername = nullptr;					//MQTT server username
-		char* MQTTpassword = nullptr;					//MQTT server password
-		char* MQTTtopic = nullptr;						//MQTT server topic
-		char* MQTTunicastTopic = nullptr;				//MQTT server unicast topic for this node
-		const char MQTTdefaultTopic[9] PROGMEM			//MQTT server default topic
-			= "/treacle";
-		//WiFiClient* mqttClient = nullptr;				//TCP/IP client
-		WiFiClient mqttClient;							//TCP/IP client
-		PubSubClient* mqtt = nullptr;					//MQTT client
-		bool initialiseMQTT();							//Initialise MQTT
-		void connectToMQTTserver();						//Attempt to (re)connect to the server
-		bool sendBufferByMQTT(uint8_t*,					//Send a buffer using COBS
-			uint8_t);
-			
+		#if defined(TREACLE_SUPPORT_MQTT)
+			uint8_t MQTTTransportId = 255;					//ID assigned to this transport if enabled, 255 implies it is not
+			char* MQTTserver = nullptr;						//MQTT server IP address/name
+			IPAddress MQTTserverIp = {0,0,0,0};				//Allow configuration by IP
+			uint16_t MQTTport = 1883;						//MQTT server port
+			char* MQTTusername = nullptr;					//MQTT server username
+			char* MQTTpassword = nullptr;					//MQTT server password
+			char* MQTTtopic = nullptr;						//MQTT server topic
+			char* MQTTunicastTopic = nullptr;				//MQTT server unicast topic for this node
+			const char MQTTdefaultTopic[9] PROGMEM			//MQTT server default topic
+				= "/treacle";
+			//WiFiClient* mqttClient = nullptr;				//TCP/IP client
+			WiFiClient mqttClient;							//TCP/IP client
+			PubSubClient* mqtt = nullptr;					//MQTT client
+			bool initialiseMQTT();							//Initialise MQTT
+			void connectToMQTTserver();						//Attempt to (re)connect to the server
+			bool sendBufferByMQTT(uint8_t*,					//Send a buffer using COBS
+				uint8_t);
+		#endif
+		
 		//UDP specific settings/functions
-		uint8_t UDPTransportId = 255;					//ID assigned to this transport if enabled, 255 implies it is not
-		AsyncUDP* udp;									//UDP instance
-		//AsyncUDP udp;									//UDP instance
-		IPAddress udpMulticastAddress = {224,0,1,38};	//Multicast address
-		uint16_t udpPort = 47625;						//UDP port number
-		bool initialiseUDP();							//Initialise UDP
-		bool sendBufferByUDP(uint8_t*,					//Send a buffer using COBS
-			uint8_t);
+		#if defined(TREACLE_SUPPORT_UDP)
+			uint8_t UDPTransportId = 255;					//ID assigned to this transport if enabled, 255 implies it is not
+			AsyncUDP* udp;									//UDP instance
+			//AsyncUDP udp;									//UDP instance
+			IPAddress udpMulticastAddress = {224,0,1,38};	//Multicast address
+			uint16_t udpPort = 47625;						//UDP port number
+			bool initialiseUDP();							//Initialise UDP
+			bool sendBufferByUDP(uint8_t*,					//Send a buffer using COBS
+				uint8_t);
+		#endif
 		
 		//Utility functions
 		uint8_t countBits(uint32_t thingToCount);		//Number of set bits in an uint32_t, or anything else
@@ -458,6 +515,115 @@ class treacleClass	{
 					debug_uart_->println();
 				}
 			}
+			#if defined(ESP8266)
+			const char debugString_treacleSpace[9] = "treacle ";
+			const char debugString_starting[9] = "starting";
+			const char debugString_start[6] = "start";
+			const char debugString_ended[6] = "ended";
+			const char debugString_enablingSpace[10] = "enabling ";
+			const char debugString_checkingSpace[10] = "checking ";
+			const char debugString_initialisingSpace[14] = "initialising ";
+			const char debugString_notInitialised[16] = "not initialised";
+			const char debugString_selectingSpace[11] = "selecting ";
+			const char debugString_OK[3] = "OK";
+			const char debugString_unknown[8] = "unknown";
+			const char debugString_failed[7] = "failed";
+			const char debugString_WiFi[5] = "WiFi";
+			const char debugString_Client[7]  = "Client";
+			const char debugString_AP[3] = "AP";
+			const char debugString_ClientAndAP[12] = "Client & AP";
+			#if defined(TREACLE_SUPPORT_ESPNOW)
+				const char debugString_ESPNow[8] = "ESP-Now";
+			#endif
+			const char debugString_channel[8] = "channel";
+			const char debugString_changedSpaceTo[11] = "changed to";
+			const char debugString_WiFiSpacenotSpaceenabled[17] = "WiFi not enabled";
+			#if defined(TREACLE_SUPPORT_LORA)
+				const char debugString_LoRa[5] = "LoRa";
+			#endif
+			#if defined(TREACLE_SUPPORT_COBS)
+				const char debugString_COBS[5] = "COBS";
+			#endif
+			const char debugString_newSpaceState[10] = "new state";
+			const char debugString_uninitialised[14] = "uninitialised";
+			const char debugString_selectingId[12] = "selectingId";
+			const char debugString_selectedId[11] = "selectedId";
+			const char debugString_online[7] = "online";
+			const char debugString_offline[8] = "offline";
+			const char debugString_stopped[8] = "stopped";
+			const char debugString_nodeId[7] = "nodeId";
+			const char debugString_tick[5] = "tick";
+			const char debugString_keepalive[10] = "keepalive";
+			const char debugString_short_application_data[23] = "short application data";
+			const char debugString_sent[5] = "sent";
+			const char debugString_received[9] = "received";
+			const char debugString_toSpace[4] = "to ";
+			const char debugString_fromSpace[6] = "from ";
+			const char debugString_ActiveSpaceTransports[18] = "active transports";
+			const char debugString_SpaceTransportID[14] = " transport ID";
+			const char debugString_packetSpace[8] = "packet ";
+			const char debugString_dropped[8] = "dropped";
+			const char debugString_addingSpace[8] = "adding ";
+			const char debugString_deletingSpace[10] = "deleting ";
+			const char debugString_peer[5] = "peer";
+			const char debugString_SpacedutySpacecycle[12] = " duty cycle";
+			const char debugString_tooShort[10] = "too short";
+			const char debugString_inconsistent[13] = "inconsistent";
+			const char debugString_bytes[6] = "bytes";
+			const char debugString_SpacenewCommaadded[12] = " new, added";
+			const char debugString__too_many_nodes[16] = " too many nodes";
+			const char debugString_includes[9] = "includes";
+			const char debugString_checksum_invalid[17] = "checksum invalid";
+			const char debugString_this_node[10] = "this node";
+			const char debugString_node_name[10] = "node name";
+			const char debugString_idResolutionRequest[17] = "name->ID request";
+			const char debugString_nameResolutionRequest[17] = "ID->name request";
+			const char debugString_nameResolutionResponse[18] = "ID->name response";
+			const char debugString_looking_up[11] = "looking up";
+			const char debugString_responding[11] = "responding";
+			const char debugString_rxReliability[14] = "rxReliability";
+			const char debugString_txReliability[14] = "txReliability";
+			const char debugString_message[8] = "message";
+			const char debugString_cleared[8] = "cleared";
+			const char debugString_padded_by[10] = "padded by";
+			const char debugString_encrypted[10] = "encrypted";
+			const char debugString_decrypted[10] = "decrypted";
+			const char debugString_encryption_key[15] = "encryption key";
+			const char debugString_duplicate[10] = "duplicate";
+			const char debugString_payload_numberColon[16] = "payload number:";
+			const char debugString_after[6] = "after";
+			const char debugString_minutes[8] = "minutes";
+			const char debugString_expediting_[12] = "expediting ";
+			const char debugString_for[4] = "for";
+			const char debugString_response[9] = "response";
+			const char debugString_all[4] = "all";
+			const char debugString_nodes[6] = "nodes";
+			const char debugString_reached[8] = "reached";
+			const char debugString_with[5] = "with";
+			const char debugString_duty_cycle_exceeded[20] = "duty cycle exceeded";
+			const char debugString_TXcolon[4] = "TX:";
+			const char debugString_TX_drops_colon[10] = "TX drops:";
+			const char debugString_RXcolon[4] = "RX:";
+			const char debugString_RX_drops_colon[10] = "RX drops:";
+			const char debugString_up[3] = "up";
+			const char debugString_suggested_message_interval[27] = "suggested message interval";
+			#if defined(TREACLE_SUPPORT_MQTT)
+				const char debugString_MQTT[5] = "MQTT";
+				const char debugString_MQTTspace[6] = "MQTT ";
+				const char debugString_connectionSpace[12] = "connection ";
+				const char debugString_server[7] = "server";
+				const char debugString_topic[6] = "topic";
+				const char debugString_username[9] = "username";
+				const char debugString_password[9] = "password";
+			#endif
+			#if defined(TREACLE_SUPPORT_UDP)
+				const char debugString_UDP[5] = "UDP";
+				const char debugString_UDPspace[5] = "UDP ";
+			#endif
+			#if defined(TREACLE_SUPPORT_MQTT) || defined(TREACLE_SUPPORT_MQTT)
+				const char debugString_port[5] = "port";
+			#endif
+			#elif defined(ESP32)
 			const char debugString_treacleSpace[9] PROGMEM = "treacle ";
 			const char debugString_starting[9] PROGMEM = "starting";
 			const char debugString_start[6] PROGMEM = "start";
@@ -474,14 +640,18 @@ class treacleClass	{
 			const char debugString_Client[7]  PROGMEM = "Client";
 			const char debugString_AP[3] PROGMEM = "AP";
 			const char debugString_ClientAndAP[12] PROGMEM = "Client & AP";
-			const char debugString_ESPNow[8] PROGMEM = "ESP-Now";
+			#if defined(TREACLE_SUPPORT_ESPNOW)
+				const char debugString_ESPNow[8] PROGMEM = "ESP-Now";
+			#endif
 			const char debugString_channel[8] PROGMEM = "channel";
 			const char debugString_changedSpaceTo[11] PROGMEM = "changed to";
 			const char debugString_WiFiSpacenotSpaceenabled[17] PROGMEM = "WiFi not enabled";
-			const char debugString_LoRa[5] PROGMEM = "LoRa";
-			const char debugString_MQTT[5] PROGMEM = "MQTT";
-			const char debugString_UDP[5] PROGMEM = "UDP";
-			const char debugString_COBS[5] PROGMEM = "COBS";
+			#if defined(TREACLE_SUPPORT_LORA)
+				const char debugString_LoRa[5] PROGMEM = "LoRa";
+			#endif
+			#if defined(TREACLE_SUPPORT_COBS)
+				const char debugString_COBS[5] PROGMEM = "COBS";
+			#endif
 			const char debugString_newSpaceState[10] PROGMEM = "new state";
 			const char debugString_uninitialised[14] PROGMEM = "uninitialised";
 			const char debugString_selectingId[12] PROGMEM = "selectingId";
@@ -545,20 +715,41 @@ class treacleClass	{
 			const char debugString_RX_drops_colon[10] PROGMEM = "RX drops:";
 			const char debugString_up[3] PROGMEM = "up";
 			const char debugString_suggested_message_interval[27] PROGMEM = "suggested message interval";
-			const char debugString_MQTTspace[6] PROGMEM = "MQTT ";
-			const char debugString_connectionSpace[12] PROGMEM = "connection ";
-			const char debugString_server[7] PROGMEM = "server";
-			const char debugString_topic[6] PROGMEM = "topic";
-			const char debugString_username[9] PROGMEM = "username";
-			const char debugString_password[9] PROGMEM = "password";
-			const char debugString_UDPspace[5] PROGMEM = "UDP ";
-			const char debugString_port[5] PROGMEM = "port";
+			#if defined(TREACLE_SUPPORT_MQTT)
+				const char debugString_MQTT[5] PROGMEM = "MQTT";
+				const char debugString_MQTTspace[6] PROGMEM = "MQTT ";
+				const char debugString_connectionSpace[12] PROGMEM = "connection ";
+				const char debugString_server[7] PROGMEM = "server";
+				const char debugString_topic[6] PROGMEM = "topic";
+				const char debugString_username[9] PROGMEM = "username";
+				const char debugString_password[9] PROGMEM = "password";
+			#endif
+			#if defined(TREACLE_SUPPORT_UDP)
+				const char debugString_UDP[5] PROGMEM = "UDP";
+				const char debugString_UDPspace[5] PROGMEM = "UDP ";
+			#endif
+			#if defined(TREACLE_SUPPORT_MQTT) || defined(TREACLE_SUPPORT_UDP)
+				const char debugString_port[5] PROGMEM = "port";
+			#endif
+			#endif
 			
 			void debugPrintTransportName(uint8_t transport)
 			{
-				if(transport == espNowTransportId){debugPrint(debugString_ESPNow);}
-				else if(transport == loRaTransportId){debugPrint(debugString_LoRa);}
-				else if(transport == cobsTransportId){debugPrint(debugString_COBS);}
+				#if defined(TREACLE_SUPPORT_ESPNOW)
+					if(transport == espNowTransportId){debugPrint(debugString_ESPNow);return;}
+				#endif
+				#if defined(TREACLE_SUPPORT_LORA)
+					if(transport == loRaTransportId){debugPrint(debugString_LoRa);return;}
+				#endif
+				#if defined(TREACLE_SUPPORT_MQTT)
+					if(transport == MQTTTransportId){debugPrint(debugString_MQTT);return;}
+				#endif
+				#if defined(TREACLE_SUPPORT_UDP)
+					if(transport == UDPTransportId){debugPrint(debugString_UDP);return;}
+				#endif
+				#if defined(TREACLE_SUPPORT_COBS)
+					if(transport == cobsTransportId){debugPrint(debugString_COBS);return;}
+				#endif
 			}
 			void debugPrintPayloadTypeDescription(uint8_t type)
 			{
