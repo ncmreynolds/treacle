@@ -54,8 +54,6 @@ bool treacleClass::initialiseUDP()
 	#if defined(ESP8266)
 		udp = new WiFiUDP;
 		if(udp->beginMulticast(WiFi.localIP(),udpMulticastAddress, udpPort))
-		//if(udp->beginMulticast(udpMulticastAddress, udpPort))
-		//if(udp->begin())
 		{
 			#if defined(TREACLE_DEBUG)
 				debugPrintln(debugString_OK);
