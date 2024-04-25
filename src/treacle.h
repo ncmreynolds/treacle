@@ -16,7 +16,9 @@
 	#define TREACLE_SUPPORT_ESPNOW
 #endif
 //#define TREACLE_SUPPORT_LORA
-//#define TREACLE_SUPPORT_UDP
+#if defined(ESP8266) || defined(ESP32)
+	#define TREACLE_SUPPORT_UDP
+#endif
 #if defined(ESP8266) || defined(ESP32)
 	#define TREACLE_SUPPORT_MQTT
 #endif
@@ -48,7 +50,13 @@
 	#if defined(TREACLE_ENCRYPT_WITH_CBC)
 		#include <aes/esp_aes.h>
 	#endif
-	#if defined(TREACLE_SUPPORT_UDP)
+#endif
+
+#if defined(TREACLE_SUPPORT_UDP)
+	#if defined(ESP8266)
+		#include <ESP8266WiFi.h>
+		#include <WiFiUdp.h>
+	#elif defined(ESP32)
 		#include <AsyncUDP.h>
 	#endif
 #endif
@@ -483,8 +491,12 @@ class treacleClass	{
 		//UDP specific settings/functions
 		#if defined(TREACLE_SUPPORT_UDP)
 			uint8_t UDPTransportId = 255;					//ID assigned to this transport if enabled, 255 implies it is not
-			AsyncUDP* udp;									//UDP instance
-			//AsyncUDP udp;									//UDP instance
+			#if defined(ESP8266)
+				WiFiUDP* udp;								//UDP instance
+				bool receiveUDP();							//Polling receiver
+			#elif defined(ESP32)
+				AsyncUDP* udp;								//UDP instance
+			#endif
 			IPAddress udpMulticastAddress = {224,0,1,38};	//Multicast address
 			uint16_t udpPort = 47625;						//UDP port number
 			bool initialiseUDP();							//Initialise UDP

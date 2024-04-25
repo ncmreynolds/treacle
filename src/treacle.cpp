@@ -591,7 +591,7 @@ uint16_t treacleClass::minimumTickTime(uint8_t transportId)
 		if(transportId == MQTTTransportId) return 1000;
 	#endif
 	#if defined(TREACLE_SUPPORT_UDP)
-		if(transportId == UDPransportId) return 500;
+		if(transportId == UDPTransportId) return 500;
 	#endif
 	#if defined(TREACLE_SUPPORT_COBS)
 		if(transportId == cobsTransportId) return 2500;
@@ -1527,6 +1527,12 @@ uint32_t treacleClass::messageWaiting()
 		if(loRaTransportId != 255 && transport[loRaTransportId].initialised == true && loRaIrqPin == -1)	//Polling method for loRa packets, must be enabled and initialised
 		{
 			receiveLoRa();
+		}
+	#endif
+	#if defined(ESP8266) && defined(TREACLE_SUPPORT_UDP)
+		if(UDPTransportId != 255 && transport[UDPTransportId].initialised == true)	//Polling method for UDP packets, must be enabled and initialised
+		{
+			receiveUDP();
 		}
 	#endif
 	if(currentState == state::uninitialised || currentState == state::starting || currentState == state::stopped)
