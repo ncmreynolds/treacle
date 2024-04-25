@@ -588,10 +588,10 @@ uint16_t treacleClass::minimumTickTime(uint8_t transportId)
 		if(transportId == loRaTransportId) return 5000;
 	#endif
 	#if defined(TREACLE_SUPPORT_MQTT)
-		if(transportId == cobsTransportId) return 1000;
+		if(transportId == MQTTTransportId) return 1000;
 	#endif
 	#if defined(TREACLE_SUPPORT_UDP)
-		if(transportId == cobsTransportId) return 500;
+		if(transportId == UDPransportId) return 500;
 	#endif
 	#if defined(TREACLE_SUPPORT_COBS)
 		if(transportId == cobsTransportId) return 2500;

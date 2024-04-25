@@ -30,7 +30,7 @@ Treacle uses other libraries to encapsulate and send packets so support is depen
 
 | Platform          | ESP-Now | UDP Multicast | MQTT    | LoRa    | COBS    |
 | ----------------- | ------- | ------------- | ------- | ------- | ------- |
-| ESP8266           | ✓       | Planned       | Planned | Planned | Planned |
+| ESP8266           | ✓       | Planned       | ✓       | Planned | Planned |
 | ESP32             | ✓       | ✓             | ✓       | ✓       | Planned |
 | AVR               | ✗       | ?             | Planned | Planned | Planned |
 | Raspberry Pi Pico | ✗       | ?             | Planned | Planned | Planned |

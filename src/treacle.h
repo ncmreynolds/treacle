@@ -12,10 +12,14 @@
 
 #define TREACLE_DEBUG
 
-#define TREACLE_SUPPORT_ESPNOW
+#if defined(ESP8266) || defined(ESP32)
+	#define TREACLE_SUPPORT_ESPNOW
+#endif
 //#define TREACLE_SUPPORT_LORA
 //#define TREACLE_SUPPORT_UDP
-//#define TREACLE_SUPPORT_MQTT
+#if defined(ESP8266) || defined(ESP32)
+	#define TREACLE_SUPPORT_MQTT
+#endif
 //#define TREACLE_SUPPORT_COBS
 
 #define TREACLE_ENCRYPT_WITH_CBC
@@ -47,7 +51,10 @@
 	#if defined(TREACLE_SUPPORT_UDP)
 		#include <AsyncUDP.h>
 	#endif
-	#if defined(TREACLE_SUPPORT_MQTT)
+#endif
+
+#if defined(TREACLE_SUPPORT_MQTT)
+	#if defined(ESP8266) || defined(ESP32)
 		#include <PubSubClient.h>	//Support for MQTT
 	#endif
 #endif
@@ -457,8 +464,13 @@ class treacleClass	{
 			char* MQTTpassword = nullptr;					//MQTT server password
 			char* MQTTtopic = nullptr;						//MQTT server topic
 			char* MQTTunicastTopic = nullptr;				//MQTT server unicast topic for this node
+			#if defined(ESP8266)
+			const char MQTTdefaultTopic[9]					//MQTT server default topic
+				= "/treacle";
+			#else
 			const char MQTTdefaultTopic[9] PROGMEM			//MQTT server default topic
 				= "/treacle";
+			#endif
 			//WiFiClient* mqttClient = nullptr;				//TCP/IP client
 			WiFiClient mqttClient;							//TCP/IP client
 			PubSubClient* mqtt = nullptr;					//MQTT client
