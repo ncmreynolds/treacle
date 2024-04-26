@@ -23,9 +23,9 @@ void treacleClass::setUDPport(uint16_t port)
 {
 	udpPort = port;
 	#if defined(TREACLE_DEBUG)
-		debugPrint(debugString_treacleSpace);
-		debugPrint(debugString_UDPspace);
-		debugPrint(debugString_port);
+		debugPrint(treacleDebugString_treacleSpace);
+		debugPrint(treacleDebugString_UDPspace);
+		debugPrint(treacleDebugString_port);
 		debugPrint(':');
 		debugPrintln(udpPort);
 	#endif
@@ -33,9 +33,9 @@ void treacleClass::setUDPport(uint16_t port)
 void treacleClass::enableUDP()
 {
 	#if defined(TREACLE_DEBUG)
-		debugPrint(debugString_treacleSpace);
-		debugPrint(debugString_enablingSpace);
-		debugPrintln(debugString_UDP);
+		debugPrint(treacleDebugString_treacleSpace);
+		debugPrint(treacleDebugString_enablingSpace);
+		debugPrintln(treacleDebugString_UDP);
 	#endif
 	UDPTransportId = numberOfActiveTransports++;
 }
@@ -46,9 +46,9 @@ bool treacleClass::UDPEnabled()
 bool treacleClass::initialiseUDP()
 {
 	#if defined(TREACLE_DEBUG)
-		debugPrint(debugString_treacleSpace);
-		debugPrint(debugString_initialisingSpace);
-		debugPrint(debugString_UDP);
+		debugPrint(treacleDebugString_treacleSpace);
+		debugPrint(treacleDebugString_initialisingSpace);
+		debugPrint(treacleDebugString_UDP);
 		debugPrint(':');
 	#endif
 	#if defined(ESP8266)
@@ -56,7 +56,7 @@ bool treacleClass::initialiseUDP()
 		if(udp->beginMulticast(WiFi.localIP(),udpMulticastAddress, udpPort))
 		{
 			#if defined(TREACLE_DEBUG)
-				debugPrintln(debugString_OK);
+				debugPrintln(treacleDebugString_OK);
 			#endif
 			transport[UDPTransportId].initialised = true;				//Mark as initialised
 			transport[UDPTransportId].defaultTick = maximumTickTime/10;	//Set default tick timer
@@ -107,7 +107,7 @@ bool treacleClass::initialiseUDP()
 					}
 				});
 			#if defined(TREACLE_DEBUG)
-				debugPrintln(debugString_OK);
+				debugPrintln(treacleDebugString_OK);
 			#endif
 			transport[UDPTransportId].initialised = true;				//Mark as initialised
 			transport[UDPTransportId].defaultTick = maximumTickTime/10;	//Set default tick timer
@@ -116,7 +116,7 @@ bool treacleClass::initialiseUDP()
 	else
 	{
 		#if defined(TREACLE_DEBUG)
-			debugPrintln(debugString_failed);
+			debugPrintln(treacleDebugString_failed);
 		#endif
 		transport[UDPTransportId].initialised = false;				//Mark as not initialised
 	}

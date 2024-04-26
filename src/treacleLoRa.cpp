@@ -28,9 +28,9 @@ void treacleClass::setLoRaFrequency(uint32_t mhz)
 void treacleClass::enableLoRa()
 {
 	#if defined(TREACLE_DEBUG)
-		debugPrint(debugString_treacleSpace);
-		debugPrint(debugString_enablingSpace);
-		debugPrintln(debugString_LoRa);
+		debugPrint(treacleDebugString_treacleSpace);
+		debugPrint(treacleDebugString_enablingSpace);
+		debugPrintln(treacleDebugString_LoRa);
 	#endif
 	loRaTransportId = numberOfActiveTransports++;
 }
@@ -41,9 +41,9 @@ bool treacleClass::loRaEnabled()
 bool treacleClass::initialiseLoRa()
 {
 	#if defined(TREACLE_DEBUG)
-		debugPrint(debugString_treacleSpace);
-		debugPrint(debugString_initialisingSpace);
-		debugPrint(debugString_LoRa);
+		debugPrint(treacleDebugString_treacleSpace);
+		debugPrint(treacleDebugString_initialisingSpace);
+		debugPrint(treacleDebugString_LoRa);
 		debugPrint(':');
 	#endif
 	if(loRaIrqPin != -1)
@@ -63,7 +63,7 @@ bool treacleClass::initialiseLoRa()
 		LoRa.setSyncWord(loRaSyncWord);							//Set sync word
 		LoRa.enableCrc();										//Enable CRC check
 		#if defined(TREACLE_DEBUG)
-			debugPrintln(debugString_OK);
+			debugPrintln(treacleDebugString_OK);
 		#endif
 		transport[loRaTransportId].initialised = true;			//Mark as initialised
 		transport[loRaTransportId].defaultTick =maximumTickTime;//Set default tick timer
@@ -117,7 +117,7 @@ bool treacleClass::initialiseLoRa()
 	else
 	{
 		#if defined(TREACLE_DEBUG)
-			debugPrintln(debugString_failed);
+			debugPrintln(treacleDebugString_failed);
 		#endif
 		transport[loRaTransportId].initialised = false;			//Mark as not initialised
 	}

@@ -30,8 +30,8 @@ void treacleClass::setNodeName(char* name)
 		currentNodeName = new char[strlen(name) + 1];
 		strlcpy(currentNodeName, name, strlen(name) + 1);
 		#if defined(TREACLE_DEBUG)
-			debugPrint(debugString_treacleSpace);
-			debugPrint(debugString_node_name);
+			debugPrint(treacleDebugString_treacleSpace);
+			debugPrint(treacleDebugString_node_name);
 			debugPrint(':');
 			debugPrintStringln(currentNodeName);
 		#endif
@@ -119,12 +119,12 @@ bool treacleClass::begin(uint8_t maxNodes)
 		}
 	}
 	#if defined(TREACLE_DEBUG)
-		debugPrint(debugString_treacleSpace);
-		debugPrint(debugString_node_name);
+		debugPrint(treacleDebugString_treacleSpace);
+		debugPrint(treacleDebugString_node_name);
 		debugPrint(':');
 		debugPrintln(currentNodeName);
-		debugPrint(debugString_treacleSpace);
-		debugPrintln(debugString_starting);
+		debugPrint(treacleDebugString_treacleSpace);
+		debugPrintln(treacleDebugString_starting);
 	#endif
 	changeCurrentState(state::starting);
 	if(numberOfActiveTransports > 0)
@@ -184,23 +184,23 @@ bool treacleClass::begin(uint8_t maxNodes)
 			}
 		}
 		#if defined(TREACLE_DEBUG)
-			debugPrint(debugString_treacleSpace);
-			debugPrint(debugString_start);
+			debugPrint(treacleDebugString_treacleSpace);
+			debugPrint(treacleDebugString_start);
 			debugPrint(':');
 		#endif
 		if(numberOfInitialisedTransports == numberOfActiveTransports)
 		{
 			#if defined(TREACLE_DEBUG)
-				debugPrintln(debugString_OK);
-				debugPrint(debugString_treacleSpace);
-				debugPrint(debugString_ActiveSpaceTransports);
+				debugPrintln(treacleDebugString_OK);
+				debugPrint(treacleDebugString_treacleSpace);
+				debugPrint(treacleDebugString_ActiveSpaceTransports);
 				debugPrint(':');
 				debugPrintln(numberOfInitialisedTransports);
 				for(uint8_t transportId = 0; transportId < numberOfActiveTransports; transportId++)
 				{
-					debugPrint(debugString_treacleSpace);
+					debugPrint(treacleDebugString_treacleSpace);
 					debugPrintTransportName(transportId);
-					debugPrint(debugString_SpaceTransportID);
+					debugPrint(treacleDebugString_SpaceTransportID);
 					debugPrint(':');
 					debugPrintln(transportId);
 				}
@@ -218,7 +218,7 @@ bool treacleClass::begin(uint8_t maxNodes)
 		}
 	}
 	#if defined(TREACLE_DEBUG)
-		debugPrintln(debugString_failed);
+		debugPrintln(treacleDebugString_failed);
 	#endif
 	changeCurrentState(state::stopped);
 	return false;
@@ -226,8 +226,8 @@ bool treacleClass::begin(uint8_t maxNodes)
 void treacleClass::end()
 {
 	#if defined(TREACLE_DEBUG)
-		debugPrint(debugString_treacleSpace);
-		debugPrintln(debugString_ended);
+		debugPrint(treacleDebugString_treacleSpace);
+		debugPrintln(treacleDebugString_ended);
 	#endif
 }
 void treacleClass::enableDebug(Stream &debugStream)
@@ -235,10 +235,10 @@ void treacleClass::enableDebug(Stream &debugStream)
 	#if defined(TREACLE_DEBUG)
 		debug_uart_ = &debugStream;				//Set the stream used for debug
 		#if defined(ESP8266)
-		if(&debugStream == &Serial)
-		{
-			  debug_uart_->write(17);			//Send an XON to stop the hung terminal after reset on ESP8266, which often emits an XOFF
-		}
+			if(&debugStream == &Serial)
+			{
+				  debug_uart_->write(17);			//Send an XON to stop the hung terminal after reset on ESP8266, which often emits an XOFF
+			}
 		#endif
 	#endif
 }
@@ -333,9 +333,9 @@ void treacleClass::disableEncryption(uint8_t transportId)				//Disable encryptio
 bool treacleClass::selectNodeId()
 {
 	#if defined(TREACLE_DEBUG)
-		debugPrint(debugString_treacleSpace);
-		debugPrint(debugString_selectingSpace);
-		debugPrint(debugString_nodeId);
+		debugPrint(treacleDebugString_treacleSpace);
+		debugPrint(treacleDebugString_selectingSpace);
+		debugPrint(treacleDebugString_nodeId);
 		debugPrint(':');
 	#endif
 	bool idIsUnique = false;
@@ -352,7 +352,7 @@ bool treacleClass::selectNodeId()
 		return true;
 	}
 	#if defined(TREACLE_DEBUG)
-		debugPrintln(debugString_failed);
+		debugPrintln(treacleDebugString_failed);
 	#endif
 	return false;
 }
@@ -381,9 +381,9 @@ bool treacleClass::processPacketBeforeTransmission(uint8_t transportId)
 void treacleClass::setEncryptionKey(uint8_t* key)	//Set the encryption key
 {
 	#if defined(TREACLE_DEBUG)
-		debugPrint(debugString_treacleSpace);
-		debugPrint(debugString_addingSpace);
-		debugPrintln(debugString_encryption_key);
+		debugPrint(treacleDebugString_treacleSpace);
+		debugPrint(treacleDebugString_addingSpace);
+		debugPrintln(treacleDebugString_encryption_key);
 	#endif
 	encryptionKey = key;
 	#if defined(TREACLE_ENCRYPT_WITH_CBC)
@@ -403,14 +403,14 @@ bool treacleClass::encryptPayload(uint8_t* buffer, uint8_t& packetSize)	//Pad th
 	if(padding > 0)
 	{
 		#if defined(TREACLE_DEBUG)
-			debugPrint(debugString_padded_by);
+			debugPrint(treacleDebugString_padded_by);
 			debugPrint(' ');
 			debugPrint(padding);
 			debugPrint(' ');
-			debugPrint(debugString_toSpace);
+			debugPrint(treacleDebugString_toSpace);
 			debugPrint(packetSize);
 			debugPrint(' ');
-			debugPrint(debugString_bytes);
+			debugPrint(treacleDebugString_bytes);
 			debugPrint(' ');
 		#endif
 	}
@@ -458,7 +458,7 @@ bool treacleClass::encryptPayload(uint8_t* buffer, uint8_t& packetSize)	//Pad th
 		}
 	#endif
 	#if defined(TREACLE_DEBUG)
-		debugPrint(debugString_encrypted);
+		debugPrint(treacleDebugString_encrypted);
 		debugPrint(' ');
 	#endif
 	buffer[(uint8_t)headerPosition::payloadType] = buffer[(uint8_t)headerPosition::payloadType] | (uint8_t)payloadType::encrypted;	//Mark as encrypted
@@ -470,18 +470,18 @@ bool treacleClass::decryptPayload(uint8_t* buffer, uint8_t& packetSize)	//Decryp
 	if(packetSize != buffer[(uint8_t)headerPosition::packetLength] + 2)
 	{
 		#if defined(TREACLE_DEBUG)
-			debugPrint(debugString_padded_by);
+			debugPrint(treacleDebugString_padded_by);
 			debugPrint(' ');
 			debugPrint(packetSize - (buffer[(uint8_t)headerPosition::packetLength] + 2));
 			debugPrint(' ');
-			debugPrint(debugString_bytes);
+			debugPrint(treacleDebugString_bytes);
 			debugPrint(' ');
 		#endif
 	}
 	//if(packetSize >= (uint8_t)headerPosition::blockIndex && packetSize <= maximumBufferSize - 2)
 	{
 		#if defined(TREACLE_DEBUG)
-			debugPrint(debugString_decrypted);
+			debugPrint(treacleDebugString_decrypted);
 			debugPrint(' ');
 		#endif
 		buffer[(uint8_t)headerPosition::payloadType] = buffer[(uint8_t)headerPosition::payloadType] & (0xff ^ (uint8_t)payloadType::encrypted);	//Mark as not encrypted, otherwise the IV and CRC is invalid
@@ -564,16 +564,16 @@ void treacleClass::changeCurrentState(state newState)
 	if(currentState != newState)
 	{
 		#if defined(TREACLE_DEBUG)
-			debugPrint(debugString_treacleSpace);
-			debugPrint(debugString_newSpaceState);
+			debugPrint(treacleDebugString_treacleSpace);
+			debugPrint(treacleDebugString_newSpaceState);
 			debugPrint(':');
 			debugPrintState(newState);
 			debugPrint(' ');
-			debugPrint(debugString_after);
+			debugPrint(treacleDebugString_after);
 			debugPrint(' ');
 			debugPrint((millis()-lastStateChange)/60E3);
 			debugPrint(' ');
-			debugPrintln(debugString_minutes);
+			debugPrintln(treacleDebugString_minutes);
 		#endif
 		currentState = newState;
 		lastStateChange = millis();
@@ -621,9 +621,9 @@ uint16_t treacleClass::tickRandomisation(uint8_t transportId)
 void treacleClass::bringForwardNextTick()
 {
 	#if defined(TREACLE_DEBUG)
-		debugPrint(debugString_treacleSpace);
-		debugPrint(debugString_expediting_);
-		debugPrintln(debugString_response);
+		debugPrint(treacleDebugString_treacleSpace);
+		debugPrint(treacleDebugString_expediting_);
+		debugPrintln(treacleDebugString_response);
 	#endif
 	for(uint8_t transportIndex = 0; transportIndex < numberOfActiveTransports; transportIndex++)
 	{
@@ -642,7 +642,7 @@ bool treacleClass::sendPacketOnTick()
 			transport[transportId].lastTick = millis();									//Update the last tick time
 			calculateDutyCycle(transportId);
 			#if defined(TREACLE_DEBUG)
-				debugPrint(debugString_treacleSpace);
+				debugPrint(treacleDebugString_treacleSpace);
 				debugPrintTransportName(transportId);
 				debugPrint(' ');
 			#endif
@@ -654,7 +654,7 @@ bool treacleClass::sendPacketOnTick()
 					{
 						buildIdResolutionRequestPacket(transportId, currentNodeName);		//Ask about this node with a name->Id request
 						#if defined(TREACLE_DEBUG)
-							debugPrint(debugString_idResolutionRequest);
+							debugPrint(treacleDebugString_idResolutionRequest);
 						#endif
 					}
 					else
@@ -668,7 +668,7 @@ bool treacleClass::sendPacketOnTick()
 								{
 									buildNameResolutionRequestPacket(transportId, node[nodeIndex].id);	//Ask for the node's name with an id->name request
 									#if defined(TREACLE_DEBUG)
-										debugPrint(debugString_nameResolutionRequest);
+										debugPrint(treacleDebugString_nameResolutionRequest);
 									#endif
 								}
 							}
@@ -677,7 +677,7 @@ bool treacleClass::sendPacketOnTick()
 						{
 							buildKeepalivePacket(transportId);				//Create an empty tick as a keepalive and announcement of all known nodeIds
 							#if defined(TREACLE_DEBUG)
-								debugPrint(debugString_keepalive);
+								debugPrint(treacleDebugString_keepalive);
 							#endif
 						}
 					}
@@ -696,20 +696,20 @@ bool treacleClass::sendPacketOnTick()
 					#if defined(TREACLE_DEBUG)
 						debugPrint(transport[transportId].transmitPacketSize);
 						debugPrint(' ');
-						debugPrint(debugString_bytes);
+						debugPrint(treacleDebugString_bytes);
 						debugPrint(' ');
-						debugPrint(debugString_sent);
+						debugPrint(treacleDebugString_sent);
 						debugPrint(' ');
-						debugPrint(debugString_toSpace);
-						debugPrint(debugString_nodeId);
+						debugPrint(treacleDebugString_toSpace);
+						debugPrint(treacleDebugString_nodeId);
 						debugPrint(':');
 						if(transport[transportId].transmitBuffer[0] == (uint8_t)nodeId::allNodes)
 						{
-							debugPrintln(debugString_all);
+							debugPrintln(treacleDebugString_all);
 						}
 						else if(transport[transportId].transmitBuffer[0] == (uint8_t)nodeId::unknownNode)
 						{
-							debugPrintln(debugString_unknown);
+							debugPrintln(treacleDebugString_unknown);
 						}
 						else
 						{
@@ -722,7 +722,7 @@ bool treacleClass::sendPacketOnTick()
 				else
 				{
 					#if defined(TREACLE_DEBUG)
-						debugPrintln(debugString_failed);
+						debugPrintln(treacleDebugString_failed);
 					#endif
 					return false;
 				}
@@ -731,7 +731,7 @@ bool treacleClass::sendPacketOnTick()
 			{
 				transport[transportId].dutyCycleExceptions++;
 				#if defined(TREACLE_DEBUG)
-					debugPrint(debugString_duty_cycle_exceeded);
+					debugPrint(treacleDebugString_duty_cycle_exceeded);
 					debugPrint(':');
 					debugPrint(transport[transportId].calculatedDutyCycle);
 					debugPrintln('%');
@@ -757,16 +757,16 @@ void treacleClass::timeOutTicks()
 				node[nodeIndex].txReliability[transportId] = node[nodeIndex].txReliability[transportId] >> 1;	//As we've not heard anything to the contrary also reduce txReliability
 				node[nodeIndex].lastTick[transportId] = millis();										//Update last tick timer, even though one was missed
 				#if defined(TREACLE_DEBUG)
-					debugPrint(debugString_treacleSpace);
+					debugPrint(treacleDebugString_treacleSpace);
 					debugPrintTransportName(transportId);
 					debugPrint(' ');
-					debugPrint(debugString_nodeId);
+					debugPrint(treacleDebugString_nodeId);
 					debugPrint(':');
 					debugPrint(node[nodeIndex].id);
 					debugPrint(' ');
-					debugPrint(debugString_dropped);
+					debugPrint(treacleDebugString_dropped);
 					debugPrint(' ');
-					debugPrint(debugString_rxReliability);
+					debugPrint(treacleDebugString_rxReliability);
 					debugPrint(':');
 					debugPrint(reliabilityPercentage(node[nodeIndex].rxReliability[transportId]));
 					debugPrintln('%');
@@ -878,14 +878,14 @@ void treacleClass::buildIdAndNameResolutionResponsePacket(uint8_t transportId, u
 void treacleClass::unpackPacket()
 {
 	#if defined(TREACLE_DEBUG)
-		debugPrint(debugString_treacleSpace);
+		debugPrint(treacleDebugString_treacleSpace);
 		debugPrintTransportName(receiveTransport);
 		debugPrint(' ');
-		debugPrint(debugString_received);
+		debugPrint(treacleDebugString_received);
 		debugPrint(' ');
 		debugPrint(receiveBufferSize);
 		debugPrint(' ');
-		debugPrint(debugString_bytes);
+		debugPrint(treacleDebugString_bytes);
 		debugPrint(' ');
 	#endif
 	if(receiveBuffer[(uint8_t)headerPosition::packetLength] >= (uint8_t)headerPosition::payload)	//Must reach a minimum size of just the header and CRC
@@ -905,8 +905,8 @@ void treacleClass::unpackPacket()
 				receiveBufferCrcChecked = true;
 				uint8_t senderId = receiveBuffer[(uint8_t)headerPosition::sender];
 				#if defined(TREACLE_DEBUG)
-					debugPrint(debugString_fromSpace);
-					debugPrint(debugString_nodeId);
+					debugPrint(treacleDebugString_fromSpace);
+					debugPrint(treacleDebugString_nodeId);
 					debugPrint(':');
 					debugPrint(senderId);
 				#endif
@@ -917,13 +917,13 @@ void treacleClass::unpackPacket()
 						if(addNode(receiveBuffer[(uint8_t)headerPosition::sender]))				//Add node if possible
 						{
 							#if defined(TREACLE_DEBUG)
-								debugPrint(debugString_SpacenewCommaadded);
+								debugPrint(treacleDebugString_SpacenewCommaadded);
 							#endif
 						}
 						else	//Abandon process, there are already the maximum number of nodes
 						{
 							#if defined(TREACLE_DEBUG)
-								debugPrint(debugString__too_many_nodes);
+								debugPrint(treacleDebugString__too_many_nodes);
 							#endif
 							clearReceiveBuffer();
 							return;
@@ -946,21 +946,21 @@ void treacleClass::unpackPacket()
 					if(receiveBuffer[(uint8_t)headerPosition::payloadNumber] == node[nodeIndex].lastPayloadNumber[receiveTransport])	//Check for duplicate packets
 					{
 						#if defined(TREACLE_DEBUG)
-							debugPrintln(debugString_duplicate);
+							debugPrintln(treacleDebugString_duplicate);
 						#endif
 						clearReceiveBuffer();
 						return;
 					}
 					node[nodeIndex].lastPayloadNumber[receiveTransport] = receiveBuffer[(uint8_t)headerPosition::payloadNumber];
 					#if defined(TREACLE_DEBUG)
-						debugPrint(debugString_payload_numberColon);
+						debugPrint(treacleDebugString_payload_numberColon);
 						debugPrint(node[nodeIndex].lastPayloadNumber[receiveTransport]);
 					#endif
 					if(node[nodeIndex].rxReliability[receiveTransport] != 0xffff)
 					{
 						#if defined(TREACLE_DEBUG)
 							debugPrint(' ');
-							debugPrint(debugString_rxReliability);
+							debugPrint(treacleDebugString_rxReliability);
 							debugPrint(':');
 							debugPrint(reliabilityPercentage(node[nodeIndex].rxReliability[receiveTransport]));
 							debugPrint('%');
@@ -1007,7 +1007,7 @@ void treacleClass::unpackPacket()
 					else
 					{
 						#if defined(TREACLE_DEBUG)
-							debugPrint(debugString_unknown);
+							debugPrint(treacleDebugString_unknown);
 							debugPrint(':');
 							debugPrintln(receiveBuffer[(uint8_t)headerPosition::payloadType]);
 						#endif
@@ -1020,7 +1020,7 @@ void treacleClass::unpackPacket()
 					{
 						#if defined(TREACLE_DEBUG)
 							debugPrint(' ');
-							debugPrintln(debugString_idResolutionRequest);
+							debugPrintln(treacleDebugString_idResolutionRequest);
 						#endif
 						unpackIdResolutionRequestPacket(receiveTransport, senderId);		//Answer if possible to give back the same ID to a restarted node
 					}
@@ -1030,7 +1030,7 @@ void treacleClass::unpackPacket()
 			else
 			{
 				#if defined(TREACLE_DEBUG)
-					debugPrintln(debugString_checksum_invalid);
+					debugPrintln(treacleDebugString_checksum_invalid);
 				#endif
 				clearReceiveBuffer();
 			}
@@ -1038,7 +1038,7 @@ void treacleClass::unpackPacket()
 		else
 		{
 			#if defined(TREACLE_DEBUG)
-				debugPrintln(debugString_inconsistent);
+				debugPrintln(treacleDebugString_inconsistent);
 			#endif
 			clearReceiveBuffer();
 		}
@@ -1046,7 +1046,7 @@ void treacleClass::unpackPacket()
 	else
 	{
 		#if defined(TREACLE_DEBUG)
-			debugPrintln(debugString_tooShort);
+			debugPrintln(treacleDebugString_tooShort);
 		#endif
 		clearReceiveBuffer();
 	}
@@ -1056,14 +1056,14 @@ void treacleClass::unpackKeepalivePacket(uint8_t transportId, uint8_t senderId)
 	if(receiveBuffer[(uint8_t)headerPosition::packetLength] > (uint8_t)headerPosition::payload)
 	{
 		#if defined(TREACLE_DEBUG)
-			debugPrintln(debugString_includes);
+			debugPrintln(treacleDebugString_includes);
 		#endif
 		for(uint8_t bufferIndex = (uint8_t)headerPosition::payload; bufferIndex < receiveBuffer[(uint8_t)headerPosition::packetLength]; bufferIndex++)
 		{
 			#if defined(TREACLE_DEBUG)
-				debugPrint(debugString_treacleSpace);
+				debugPrint(treacleDebugString_treacleSpace);
 				debugPrint("\t");
-				debugPrint(debugString_nodeId);
+				debugPrint(treacleDebugString_nodeId);
 				debugPrint(':');
 				debugPrint(receiveBuffer[bufferIndex]);
 			#endif
@@ -1075,9 +1075,9 @@ void treacleClass::unpackKeepalivePacket(uint8_t transportId, uint8_t senderId)
 				node[senderIndex].txReliability[transportId] = receivedTxReliabilityMetric;
 				#if defined(TREACLE_DEBUG)
 					debugPrint(' ');
-					debugPrint(debugString_this_node);
+					debugPrint(treacleDebugString_this_node);
 					debugPrint(' ');
-					debugPrint(debugString_txReliability);
+					debugPrint(treacleDebugString_txReliability);
 					debugPrint(':');
 					debugPrintln(node[senderIndex].txReliability[transportId]);
 				#endif
@@ -1091,13 +1091,13 @@ void treacleClass::unpackKeepalivePacket(uint8_t transportId, uint8_t senderId)
 						if(addNode(receiveBuffer[bufferIndex], receivedTxReliabilityMetric))	//Use txReliability from the other node as a best guess starting point
 						{
 							#if defined(TREACLE_DEBUG)
-								debugPrintln(debugString_SpacenewCommaadded);
+								debugPrintln(treacleDebugString_SpacenewCommaadded);
 							#endif
 						}
 						else	//Abandon process, there are already the maximum number of nodes
 						{
 							#if defined(TREACLE_DEBUG)
-								debugPrintln(debugString__too_many_nodes);
+								debugPrintln(treacleDebugString__too_many_nodes);
 							#endif
 						}
 					}
@@ -1106,7 +1106,7 @@ void treacleClass::unpackKeepalivePacket(uint8_t transportId, uint8_t senderId)
 				{
 					#if defined(TREACLE_DEBUG)
 						debugPrint(' ');
-						debugPrint(debugString_txReliability);
+						debugPrint(treacleDebugString_txReliability);
 						debugPrint(':');
 						debugPrintln(receivedTxReliabilityMetric);
 					#endif
@@ -1130,7 +1130,7 @@ void treacleClass::unpackIdResolutionRequestPacket(uint8_t transportId, uint8_t 
 		char nameToLookUp[nameLength + 1];
 		strlcpy(nameToLookUp,(const char*)&receiveBuffer[1+(uint8_t)headerPosition::payload],nameLength + 1);	//Copy the name from the packet
 		#if defined(TREACLE_DEBUG)
-			debugPrint(debugString_looking_up);
+			debugPrint(treacleDebugString_looking_up);
 			debugPrint(':');
 			debugPrint(nameToLookUp);
 			debugPrint(' ');
@@ -1139,7 +1139,7 @@ void treacleClass::unpackIdResolutionRequestPacket(uint8_t transportId, uint8_t 
 		if(nodeIndex != maximumNumberOfNodes)
 		{
 			#if defined(TREACLE_DEBUG)
-				debugPrint(debugString_nodeId);
+				debugPrint(treacleDebugString_nodeId);
 				debugPrint(':');
 			#endif
 			if(packetInQueue() == false)
@@ -1147,7 +1147,7 @@ void treacleClass::unpackIdResolutionRequestPacket(uint8_t transportId, uint8_t 
 				#if defined(TREACLE_DEBUG)
 					debugPrint(node[nodeIndex].id);
 					debugPrint(' ');
-					debugPrintln(debugString_responding);
+					debugPrintln(treacleDebugString_responding);
 				#endif
 				buildIdAndNameResolutionResponsePacket(transportId, node[nodeIndex].id, senderId);	//This is _probably_ from an unknown node, so send it direct
 			}
@@ -1161,7 +1161,7 @@ void treacleClass::unpackIdResolutionRequestPacket(uint8_t transportId, uint8_t 
 		else
 		{
 			#if defined(TREACLE_DEBUG)
-				debugPrintln(debugString_unknown);
+				debugPrintln(treacleDebugString_unknown);
 			#endif
 		}
 	}
@@ -1172,9 +1172,9 @@ void treacleClass::unpackNameResolutionRequestPacket(uint8_t transportId, uint8_
 	{
 		uint8_t id = receiveBuffer[(uint8_t)headerPosition::payload];
 		#if defined(TREACLE_DEBUG)
-			debugPrint(debugString_looking_up);
+			debugPrint(treacleDebugString_looking_up);
 			debugPrint(' ');
-			debugPrint(debugString_nodeId);
+			debugPrint(treacleDebugString_nodeId);
 			debugPrint(':');
 			debugPrint(id);
 			debugPrint(' ');
@@ -1182,11 +1182,11 @@ void treacleClass::unpackNameResolutionRequestPacket(uint8_t transportId, uint8_
 		if(id == currentNodeId)	//It's this node, which MUST have a name
 		{
 			#if defined(TREACLE_DEBUG)
-				debugPrint(debugString_node_name);
+				debugPrint(treacleDebugString_node_name);
 				debugPrint(':');
 				debugPrint(currentNodeName);
 				debugPrint(' ');
-				debugPrintln(debugString_this_node);
+				debugPrintln(treacleDebugString_this_node);
 			#endif
 			if(packetInQueue() == false)										//Nothing currently in the queue
 			{
@@ -1199,7 +1199,7 @@ void treacleClass::unpackNameResolutionRequestPacket(uint8_t transportId, uint8_
 			if(nodeIndex != maximumNumberOfNodes && node[nodeIndex].name != nullptr)	//It's known about and there's a name
 			{
 				#if defined(TREACLE_DEBUG)
-					debugPrint(debugString_node_name);
+					debugPrint(treacleDebugString_node_name);
 					debugPrint(':');
 				#endif
 				if(packetInQueue() == false)							//Nothing currently in the queue
@@ -1207,7 +1207,7 @@ void treacleClass::unpackNameResolutionRequestPacket(uint8_t transportId, uint8_
 					#if defined(TREACLE_DEBUG)
 						debugPrint(node[nodeIndex].name);
 						debugPrint(' ');
-						debugPrintln(debugString_responding);
+						debugPrintln(treacleDebugString_responding);
 					#endif
 					buildIdAndNameResolutionResponsePacket(transportId, node[nodeIndex].id, (uint8_t)nodeId::allNodes);	//Send a response
 				}
@@ -1221,7 +1221,7 @@ void treacleClass::unpackNameResolutionRequestPacket(uint8_t transportId, uint8_
 			else
 			{
 				#if defined(TREACLE_DEBUG)
-					debugPrintln(debugString_unknown);
+					debugPrintln(treacleDebugString_unknown);
 				#endif
 			}
 		}
@@ -1241,7 +1241,7 @@ void treacleClass::unpackIdAndNameResolutionResponsePacket(uint8_t transportId, 
 				#if defined(TREACLE_DEBUG)
 					debugPrint(receiveBuffer[(uint8_t)headerPosition::payload]);
 					debugPrint(' ');
-					debugPrintln(debugString_this_node);
+					debugPrintln(treacleDebugString_this_node);
 				#endif
 				currentNodeId = receiveBuffer[(uint8_t)headerPosition::payload];	//Use the ID
 				changeCurrentState(state::selectedId);
@@ -1258,10 +1258,10 @@ void treacleClass::unpackIdAndNameResolutionResponsePacket(uint8_t transportId, 
 			if(nodeIndex != maximumNumberOfNodes)
 			{
 				#if defined(TREACLE_DEBUG)
-					debugPrintln(debugString_received);
-					debugPrint(debugString_treacleSpace);
+					debugPrintln(treacleDebugString_received);
+					debugPrint(treacleDebugString_treacleSpace);
 					debugPrint("\t");
-					debugPrint(debugString_nodeId);
+					debugPrint(treacleDebugString_nodeId);
 					debugPrint(':');
 					debugPrint(receiveBuffer[(uint8_t)headerPosition::payload]);
 					debugPrint(" <-> \"");
@@ -1283,7 +1283,7 @@ void treacleClass::unpackIdAndNameResolutionResponsePacket(uint8_t transportId, 
 					node[nodeIndex].name = new char[nameLength];
 					strlcpy(node[nodeIndex].name,(const char*)&receiveBuffer[2+(uint8_t)headerPosition::payload],nameLength + 1);
 					#if defined(TREACLE_DEBUG)
-						debugPrintln(debugString_SpacenewCommaadded);
+						debugPrintln(treacleDebugString_SpacenewCommaadded);
 					#endif
 				}
 				else
@@ -1585,10 +1585,10 @@ void treacleClass::clearWaitingMessage()
 {
 	clearReceiveBuffer();
 	#if defined(TREACLE_DEBUG)
-		debugPrint(debugString_treacleSpace);
-		debugPrint(debugString_message);
+		debugPrint(treacleDebugString_treacleSpace);
+		debugPrint(treacleDebugString_message);
 		debugPrint(' ');
-		debugPrintln(debugString_cleared);
+		debugPrintln(treacleDebugString_cleared);
 	#endif
 }
 uint32_t treacleClass::suggestedQueueInterval()
@@ -1617,8 +1617,8 @@ uint32_t treacleClass::suggestedQueueInterval()
 			if(numberOfNodesReached == numberOfNodes)
 			{
 				#if defined(TREACLE_DEBUG)
-					debugPrint(debugString_treacleSpace);
-					debugPrint(debugString_suggested_message_interval);
+					debugPrint(treacleDebugString_treacleSpace);
+					debugPrint(treacleDebugString_suggested_message_interval);
 					debugPrint(' ');
 					debugPrint((transport[transportId].nextTick * 2)/1000);
 					debugPrintln('s');
@@ -1630,8 +1630,8 @@ uint32_t treacleClass::suggestedQueueInterval()
 	else if(numberOfActiveTransports == 1)
 	{
 		#if defined(TREACLE_DEBUG)
-			debugPrint(debugString_treacleSpace);
-			debugPrint(debugString_suggested_message_interval);
+			debugPrint(treacleDebugString_treacleSpace);
+			debugPrint(treacleDebugString_suggested_message_interval);
 			debugPrint(' ');
 			debugPrint((transport[0].nextTick * 2)/1000);
 			debugPrintln('s');
@@ -1639,8 +1639,8 @@ uint32_t treacleClass::suggestedQueueInterval()
 		return transport[0].nextTick * 2;
 	}
 	#if defined(TREACLE_DEBUG)
-		debugPrint(debugString_treacleSpace);
-		debugPrint(debugString_suggested_message_interval);
+		debugPrint(treacleDebugString_treacleSpace);
+		debugPrint(treacleDebugString_suggested_message_interval);
 		debugPrint(' ');
 		debugPrint((maximumTickTime * 2)/1000);
 		debugPrintln('s');
@@ -1734,75 +1734,75 @@ uint8_t treacleClass::maxPayloadSize()
 #if defined(TREACLE_DEBUG)
 	void treacleClass::showStatus()
 	{
-		debugPrint(debugString_treacleSpace);
-		debugPrint(debugString_nodeId);
+		debugPrint(treacleDebugString_treacleSpace);
+		debugPrint(treacleDebugString_nodeId);
 		debugPrint(':');
 		debugPrint(currentNodeId);
 		debugPrint(' ');
 		debugPrintString(currentNodeName);
 		debugPrint(' ');
-		debugPrint(debugString_up);
+		debugPrint(treacleDebugString_up);
 		debugPrint(':');
 		debugPrint(millis()/60E3);
 		debugPrint(' ');
-		debugPrint(debugString_minutes);
+		debugPrint(treacleDebugString_minutes);
 		debugPrint(' ');
 		debugPrintState(currentState);
 		//debugPrint(' ');
-		//debugPrint(debugString_for);
+		//debugPrint(treacleDebugString_for);
 		//debugPrint(' ');
 		debugPrint(':');
 		debugPrint((millis()-lastStateChange)/60E3);
 		debugPrint(' ');
-		debugPrintln(debugString_minutes);
+		debugPrintln(treacleDebugString_minutes);
 		for(uint8_t transportId = 0; transportId < numberOfActiveTransports; transportId++)
 		{
-			debugPrint(debugString_treacleSpace);
+			debugPrint(treacleDebugString_treacleSpace);
 			debugPrint("\t");
 			debugPrintTransportName(transportId);
-			debugPrint(debugString_SpacedutySpacecycle);
+			debugPrint(treacleDebugString_SpacedutySpacecycle);
 			debugPrint(':');
 			debugPrint(transport[transportId].calculatedDutyCycle);
 			debugPrint('%');
 			debugPrint(' ');
-			debugPrint(debugString_TXcolon);
+			debugPrint(treacleDebugString_TXcolon);
 			debugPrint(transport[transportId].txPackets);
 			debugPrint(' ');
-			debugPrint(debugString_TX_drops_colon);
+			debugPrint(treacleDebugString_TX_drops_colon);
 			debugPrint(transport[transportId].txPacketsDropped);
 			debugPrint(' ');
-			debugPrint(debugString_RXcolon);
+			debugPrint(treacleDebugString_RXcolon);
 			debugPrint(transport[transportId].rxPackets);
 			debugPrint(' ');
-			debugPrint(debugString_RX_drops_colon);
+			debugPrint(treacleDebugString_RX_drops_colon);
 			debugPrintln(transport[transportId].rxPacketsDropped);
 		}
 		for(uint8_t nodeIndex = 0; nodeIndex < numberOfNodes; nodeIndex++)
 		{
-			debugPrint(debugString_treacleSpace);
+			debugPrint(treacleDebugString_treacleSpace);
 			debugPrint("\t");
-			debugPrint(debugString_nodeId);
+			debugPrint(treacleDebugString_nodeId);
 			debugPrint(':');
 			debugPrint(node[nodeIndex].id);
 			debugPrint(' ');
 			debugPrintStringln(node[nodeIndex].name);
 			for(uint8_t transportId = 0; transportId < numberOfActiveTransports; transportId++)
 			{
-				debugPrint(debugString_treacleSpace);
+				debugPrint(treacleDebugString_treacleSpace);
 				debugPrint("\t\t");
 				debugPrintTransportName(transportId);
 				debugPrint(' ');
-				debugPrint(debugString_txReliability);
+				debugPrint(treacleDebugString_txReliability);
 				debugPrint(':');
 				debugPrint(reliabilityPercentage(node[nodeIndex].txReliability[transportId]));
 				debugPrint('%');
 				debugPrint(' ');
-				debugPrint(debugString_rxReliability);
+				debugPrint(treacleDebugString_rxReliability);
 				debugPrint(':');
 				debugPrint(reliabilityPercentage(node[nodeIndex].rxReliability[transportId]));
 				debugPrint('%');
 				debugPrint(' ');
-				debugPrint(debugString_payload_numberColon);
+				debugPrint(treacleDebugString_payload_numberColon);
 				debugPrintln(node[nodeIndex].lastPayloadNumber[transportId]);
 				//uint32_t* lastTick = nullptr; 			//This is per transport
 				//uint16_t* nextTick = nullptr; 			//This is per transport

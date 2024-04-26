@@ -45,7 +45,9 @@ void setup()
   }
   Serial.print("\r\nWiFi connected, IP address: ");
   Serial.println(WiFi.localIP());
-  treacle.enableDebug(Serial);              //Enable debug on Serial
+  #if !defined(AVR)
+    //treacle.enableDebug(Serial);              //Enable debug on Serial
+  #endif
   #if defined(MQTT_SERVER_IP)
   treacle.setMQTTserver(MQTT_SERVER_IP);
   #elif defined(MQTT_SERVER)
@@ -57,7 +59,15 @@ void setup()
   //treacle.setMQTTpassword(MQTT_PASSWORD);
   treacle.enableMQTT();                     //Enable MQTT
   treacle.setEncryptionKey(encryptionKey);  //Set encryption key for all protocols
-  treacle.begin();                          //Start treacle
+  Serial.print("Starting MQTT listener:");
+  if(treacle.begin())                           //Start treacle
+  {
+    Serial.println("OK");
+  }
+  else
+  {
+    Serial.println("failed");
+  }
 }
 
 void loop()

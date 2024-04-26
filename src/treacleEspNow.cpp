@@ -18,9 +18,9 @@
 void treacleClass::enableEspNow()
 {
 	#if defined(TREACLE_DEBUG)
-		debugPrint(debugString_treacleSpace);
-		debugPrint(debugString_enablingSpace);
-		debugPrintln(debugString_ESPNow);
+		debugPrint(treacleDebugString_treacleSpace);
+		debugPrint(treacleDebugString_enablingSpace);
+		debugPrintln(treacleDebugString_ESPNow);
 	#endif
 	espNowTransportId = numberOfActiveTransports++;
 }
@@ -145,55 +145,55 @@ uint16_t treacleClass::getEspNowTickInterval()
 bool treacleClass::initialiseWiFi()								//Checks to see the state of the WiFi
 {
 	#if defined(TREACLE_DEBUG)
-		debugPrint(debugString_treacleSpace);
-		debugPrint(debugString_checkingSpace);
-		debugPrint(debugString_WiFi);
+		debugPrint(treacleDebugString_treacleSpace);
+		debugPrint(treacleDebugString_checkingSpace);
+		debugPrint(treacleDebugString_WiFi);
 		debugPrint(':');
 	#endif
 	if(WiFi.getMode() == WIFI_STA)
 	{
 		#if defined(TREACLE_DEBUG)
-			debugPrint(debugString_Client);
+			debugPrint(treacleDebugString_Client);
 		#endif
 	}
 	else if(WiFi.getMode() == WIFI_AP)
 	{
 		#if defined(TREACLE_DEBUG)
-			debugPrint(debugString_AP);
+			debugPrint(treacleDebugString_AP);
 			debugPrint(' ');
-			debugPrint(debugString_channel);
+			debugPrint(treacleDebugString_channel);
 			debugPrint(':');
 			debugPrintln(WiFi.channel());
 			debugPrint(' ');
-			debugPrintln(debugString_OK);
+			debugPrintln(treacleDebugString_OK);
 		#endif
 		return true;
 	}
 	else if(WiFi.getMode() == WIFI_AP_STA)
 	{
 		#if defined(TREACLE_DEBUG)
-			debugPrint(debugString_ClientAndAP);
+			debugPrint(treacleDebugString_ClientAndAP);
 		#endif
 	}
 	#if defined(ESP8266)
 	else if(WiFi.getMode() == WIFI_OFF)
 	{
 		#if defined(TREACLE_DEBUG)
-			debugPrintln(debugString_notInitialised);
-			debugPrint(debugString_treacleSpace);
-			debugPrint(debugString_initialisingSpace);
-			debugPrint(debugString_WiFi);
+			debugPrintln(treacleDebugString_notInitialised);
+			debugPrint(treacleDebugString_treacleSpace);
+			debugPrint(treacleDebugString_initialisingSpace);
+			debugPrint(treacleDebugString_WiFi);
 			debugPrint(':');
 		#endif
 		wl_status_t status = WiFi.begin();
 		if(status == WL_IDLE_STATUS || status == WL_CONNECTED)
 		{
 			#if defined(TREACLE_DEBUG)
-				debugPrintln(debugString_OK);
-				debugPrint(debugString_treacleSpace);
-				debugPrint(debugString_WiFi);
+				debugPrintln(treacleDebugString_OK);
+				debugPrint(treacleDebugString_treacleSpace);
+				debugPrint(treacleDebugString_WiFi);
 				debugPrint(' ');
-				debugPrint(debugString_channel);
+				debugPrint(treacleDebugString_channel);
 				debugPrint(':');
 				debugPrintln(WiFi.channel());
 			#endif
@@ -202,7 +202,7 @@ bool treacleClass::initialiseWiFi()								//Checks to see the state of the WiFi
 		else
 		{
 			#if defined(TREACLE_DEBUG)
-				debugPrintln(debugString_failed);
+				debugPrintln(treacleDebugString_failed);
 			#endif
 		}
 	}
@@ -210,20 +210,20 @@ bool treacleClass::initialiseWiFi()								//Checks to see the state of the WiFi
 	else if(WiFi.getMode() == WIFI_MODE_NULL)
 	{
 		#if defined(TREACLE_DEBUG)
-			debugPrintln(debugString_notInitialised);
-			debugPrint(debugString_treacleSpace);
-			debugPrint(debugString_initialisingSpace);
-			debugPrint(debugString_WiFi);
+			debugPrintln(treacleDebugString_notInitialised);
+			debugPrint(treacleDebugString_treacleSpace);
+			debugPrint(treacleDebugString_initialisingSpace);
+			debugPrint(treacleDebugString_WiFi);
 			debugPrint(':');
 		#endif
 		if(WiFi.scanNetworks() >= 0)							//A WiFi scan nicely sets everything up without joining a network
 		{
 			#if defined(TREACLE_DEBUG)
-				debugPrintln(debugString_OK);
-				debugPrint(debugString_treacleSpace);
-				debugPrint(debugString_WiFi);
+				debugPrintln(treacleDebugString_OK);
+				debugPrint(treacleDebugString_treacleSpace);
+				debugPrint(treacleDebugString_WiFi);
 				debugPrint(' ');
-				debugPrint(debugString_channel);
+				debugPrint(treacleDebugString_channel);
 				debugPrint(':');
 				debugPrintln(WiFi.channel());
 			#endif
@@ -236,7 +236,7 @@ bool treacleClass::initialiseWiFi()								//Checks to see the state of the WiFi
 		else
 		{
 			#if defined(TREACLE_DEBUG)
-				debugPrintln(debugString_failed);
+				debugPrintln(treacleDebugString_failed);
 			#endif
 		}
 	}
@@ -244,7 +244,7 @@ bool treacleClass::initialiseWiFi()								//Checks to see the state of the WiFi
 	else
 	{
 		#if defined(TREACLE_DEBUG)
-			debugPrint(debugString_unknown);
+			debugPrint(treacleDebugString_unknown);
 			debugPrint('/');
 			debugPrint(WiFi.getMode());
 			debugPrint(' ');
@@ -279,12 +279,12 @@ bool treacleClass::changeWiFiChannel(uint8_t channel)
 		if(esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE) == ESP_OK)
 		{
 			#if defined(TREACLE_DEBUG)
-				debugPrint(debugString_treacleSpace);
-				debugPrint(debugString_WiFi);
+				debugPrint(treacleDebugString_treacleSpace);
+				debugPrint(treacleDebugString_WiFi);
 				debugPrint(' ');
-				debugPrint(debugString_channel);
+				debugPrint(treacleDebugString_channel);
 				debugPrint(' ');
-				debugPrint(debugString_changedSpaceTo);
+				debugPrint(treacleDebugString_changedSpaceTo);
 				debugPrint(':');
 				debugPrintln(WiFi.channel());
 			#endif
@@ -348,9 +348,9 @@ bool treacleClass::initialiseEspNow()
 	if(initialiseWiFi())
 	{
 		#if defined(TREACLE_DEBUG)
-			debugPrint(debugString_treacleSpace);
-			debugPrint(debugString_initialisingSpace);
-			debugPrint(debugString_ESPNow);
+			debugPrint(treacleDebugString_treacleSpace);
+			debugPrint(treacleDebugString_initialisingSpace);
+			debugPrint(treacleDebugString_ESPNow);
 			debugPrint(':');
 		#endif
 		if(WiFi.getMode() == WIFI_AP)
@@ -374,7 +374,7 @@ bool treacleClass::initialiseEspNow()
 							transport[espNowTransportId].initialised = true;
 							transport[espNowTransportId].defaultTick = maximumTickTime/5;
 							#if defined(TREACLE_DEBUG)
-								debugPrintln(debugString_OK);
+								debugPrintln(treacleDebugString_OK);
 							#endif
 							return true;
 						}
@@ -429,7 +429,7 @@ bool treacleClass::initialiseEspNow()
 							transport[espNowTransportId].initialised = true;
 							transport[espNowTransportId].defaultTick = maximumTickTime/5;
 							#if defined(TREACLE_DEBUG)
-								debugPrintln(debugString_OK);
+								debugPrintln(treacleDebugString_OK);
 							#endif
 							return true;
 						}
@@ -440,7 +440,7 @@ bool treacleClass::initialiseEspNow()
 	}
 	transport[espNowTransportId].initialised = false;
 	#if defined(TREACLE_DEBUG)
-		debugPrintln(debugString_failed);
+		debugPrintln(treacleDebugString_failed);
 	#endif
 	return transport[espNowTransportId].initialised;
 }
@@ -448,10 +448,10 @@ bool treacleClass::addEspNowPeer(uint8_t* macaddress)
 {
 	/*
 	#if defined(TREACLE_DEBUG)
-		debugPrint(debugString_treacleSpace);
-		debugPrint(debugString_addingSpace);
-		debugPrint(debugString_ESPNow);
-		debugPrint(debugString_peer);
+		debugPrint(treacleDebugString_treacleSpace);
+		debugPrint(treacleDebugString_addingSpace);
+		debugPrint(treacleDebugString_ESPNow);
+		debugPrint(treacleDebugString_peer);
 		debugPrint(':');
 	#endif
 	*/
@@ -459,7 +459,7 @@ bool treacleClass::addEspNowPeer(uint8_t* macaddress)
 	if(esp_now_add_peer(macaddress, ESP_NOW_ROLE_COMBO, currentEspNowChannel, NULL, 0) == ESP_OK)
 	{
 		#if defined(TREACLE_DEBUG)
-			//debugPrintln(debugString_OK);
+			//debugPrintln(treacleDebugString_OK);
 		#endif
 		return true;
 	}
@@ -488,13 +488,13 @@ bool treacleClass::addEspNowPeer(uint8_t* macaddress)
 	if(esp_now_add_peer(&newPeer) == ESP_OK)
 	{
 		#if defined(TREACLE_DEBUG)
-			//debugPrintln(debugString_OK);
+			//debugPrintln(treacleDebugString_OK);
 		#endif
 		return true;
 	}
 	#endif
 	#if defined(TREACLE_DEBUG)
-		//debugPrintln(debugString_failed);
+		//debugPrintln(treacleDebugString_failed);
 	#endif
 	return false;
 }

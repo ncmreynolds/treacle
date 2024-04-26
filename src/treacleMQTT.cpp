@@ -30,9 +30,9 @@ void treacleClass::setMQTTserver(char* server)
 		MQTTserver = new char[strlen(server) + 1];
 		strlcpy(MQTTserver, server, strlen(server) + 1);
 		#if defined(TREACLE_DEBUG)
-			debugPrint(debugString_treacleSpace);
-			debugPrint(debugString_MQTTspace);
-			debugPrint(debugString_server);
+			debugPrint(treacleDebugString_treacleSpace);
+			debugPrint(treacleDebugString_MQTTspace);
+			debugPrint(treacleDebugString_server);
 			debugPrint(':');
 			debugPrintStringln(MQTTserver);
 		#endif
@@ -57,9 +57,9 @@ void treacleClass::setMQTTtopic(char* topic)
 		MQTTtopic = new char[strlen(topic) + 1];
 		strlcpy(MQTTtopic, topic, strlen(topic) + 1);
 		#if defined(TREACLE_DEBUG)
-			debugPrint(debugString_treacleSpace);
-			debugPrint(debugString_MQTTspace);
-			debugPrint(debugString_topic);
+			debugPrint(treacleDebugString_treacleSpace);
+			debugPrint(treacleDebugString_MQTTspace);
+			debugPrint(treacleDebugString_topic);
 			debugPrint(':');
 			debugPrintStringln(MQTTtopic);
 		#endif
@@ -69,9 +69,9 @@ void treacleClass::setMQTTport(uint16_t port)
 {
 	MQTTport = port;
 	#if defined(TREACLE_DEBUG)
-		debugPrint(debugString_treacleSpace);
-		debugPrint(debugString_MQTTspace);
-		debugPrint(debugString_port);
+		debugPrint(treacleDebugString_treacleSpace);
+		debugPrint(treacleDebugString_MQTTspace);
+		debugPrint(treacleDebugString_port);
 		debugPrint(':');
 		debugPrintln(MQTTport);
 	#endif
@@ -91,9 +91,9 @@ void treacleClass::setMQTTusername(char* username)
 		MQTTusername = new char[strlen(username) + 1];
 		strlcpy(MQTTusername, username, strlen(username) + 1);
 		#if defined(TREACLE_DEBUG)
-			debugPrint(debugString_treacleSpace);
-			debugPrint(debugString_MQTTspace);
-			debugPrint(debugString_username);
+			debugPrint(treacleDebugString_treacleSpace);
+			debugPrint(treacleDebugString_MQTTspace);
+			debugPrint(treacleDebugString_username);
 			debugPrint(':');
 			debugPrintStringln(MQTTusername);
 		#endif
@@ -114,9 +114,9 @@ void treacleClass::setMQTTpassword(char* password)
 		MQTTpassword = new char[strlen(password) + 1];
 		strlcpy(MQTTpassword, password, strlen(password) + 1);
 		#if defined(TREACLE_DEBUG)
-			debugPrint(debugString_treacleSpace);
-			debugPrint(debugString_MQTTspace);
-			debugPrint(debugString_password);
+			debugPrint(treacleDebugString_treacleSpace);
+			debugPrint(treacleDebugString_MQTTspace);
+			debugPrint(treacleDebugString_password);
 			debugPrint(':');
 			debugPrintStringln(MQTTpassword);
 		#endif
@@ -125,9 +125,9 @@ void treacleClass::setMQTTpassword(char* password)
 void treacleClass::enableMQTT()
 {
 	#if defined(TREACLE_DEBUG)
-		debugPrint(debugString_treacleSpace);
-		debugPrint(debugString_enablingSpace);
-		debugPrintln(debugString_MQTT);
+		debugPrint(treacleDebugString_treacleSpace);
+		debugPrint(treacleDebugString_enablingSpace);
+		debugPrintln(treacleDebugString_MQTT);
 	#endif
 	MQTTTransportId = numberOfActiveTransports++;
 }
@@ -138,9 +138,9 @@ bool treacleClass::MQTTEnabled()
 bool treacleClass::initialiseMQTT()
 {
 	#if defined(TREACLE_DEBUG)
-		debugPrint(debugString_treacleSpace);
-		debugPrint(debugString_initialisingSpace);
-		debugPrint(debugString_MQTT);
+		debugPrint(treacleDebugString_treacleSpace);
+		debugPrint(treacleDebugString_initialisingSpace);
+		debugPrint(treacleDebugString_MQTT);
 		debugPrint(':');
 	#endif
 	if(MQTTserver != nullptr || (MQTTserverIp[0] != 0 && MQTTserverIp[1] != 0 && MQTTserverIp[2] != 0 && MQTTserverIp[3] != 0))
@@ -197,7 +197,7 @@ bool treacleClass::initialiseMQTT()
 		if(true)
 		{
 			#if defined(TREACLE_DEBUG)
-				debugPrintln(debugString_OK);
+				debugPrintln(treacleDebugString_OK);
 			#endif
 			transport[MQTTTransportId].initialised = true;				//Mark as initialised
 			transport[MQTTTransportId].defaultTick = maximumTickTime/5;//Set default tick timer
@@ -205,7 +205,7 @@ bool treacleClass::initialiseMQTT()
 		else
 		{
 			#if defined(TREACLE_DEBUG)
-				debugPrintln(debugString_failed);
+				debugPrintln(treacleDebugString_failed);
 			#endif
 			transport[MQTTTransportId].initialised = false;				//Mark as not initialised
 		}
@@ -213,7 +213,7 @@ bool treacleClass::initialiseMQTT()
 	else
 	{
 		#if defined(TREACLE_DEBUG)
-			debugPrintln(debugString_failed);
+			debugPrintln(treacleDebugString_failed);
 		#endif
 		transport[MQTTTransportId].initialised = false;					//Mark as not initialised
 	}
@@ -222,11 +222,11 @@ bool treacleClass::initialiseMQTT()
 void treacleClass::connectToMQTTserver()
 {
 	#if defined(TREACLE_DEBUG)
-		debugPrint(debugString_treacleSpace);
-		debugPrint(debugString_initialisingSpace);
-		debugPrint(debugString_MQTTspace);
-		debugPrint(debugString_connectionSpace);
-		debugPrint(debugString_toSpace);
+		debugPrint(treacleDebugString_treacleSpace);
+		debugPrint(treacleDebugString_initialisingSpace);
+		debugPrint(treacleDebugString_MQTTspace);
+		debugPrint(treacleDebugString_connectionSpace);
+		debugPrint(treacleDebugString_toSpace);
 		if(MQTTserver != nullptr)
 		{
 			debugPrint(MQTTserver);
@@ -245,14 +245,14 @@ void treacleClass::connectToMQTTserver()
 	if(mqtt->connect(currentNodeName))
 	{
 		#if defined(TREACLE_DEBUG)
-			debugPrintln(debugString_OK);
+			debugPrintln(treacleDebugString_OK);
 		#endif
 		mqtt->subscribe(MQTTtopic);
 	}
 	else
 	{
 		#if defined(TREACLE_DEBUG)
-			debugPrint(debugString_failed);
+			debugPrint(treacleDebugString_failed);
 			debugPrintln(mqtt->state());
 		#endif
 	}
