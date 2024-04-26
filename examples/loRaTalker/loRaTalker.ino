@@ -12,8 +12,8 @@
 uint8_t encryptionKey[] = {0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80};
 uint32_t timeOfLastMessage = 0;
 char message[] = "Hello there";
-uint8_t loRaCsPin = 34;
-uint8_t loRaResetPin = 33;
+uint8_t loRaCsPin = D8;
+uint8_t loRaResetPin = D0;
 
 void setup()
 {
@@ -22,7 +22,6 @@ void setup()
   treacle.enableDebug(Serial);                  //Enable debug on Serial
   treacle.setLoRaPins(loRaCsPin, loRaResetPin); //Set the LoRa reset and CS pins, assuming other default SPI pins
   treacle.setLoRaFrequency(868E6);              //Set the LoRa frequency to 868Mhz. Valid value are 433/868/915Mhz depending on region
-  treacle.enableEspNow();                       //Enable ESP-Now, this will be the highest proiority protocol
   treacle.enableLoRa();                         //Enable LoRa, this will only be used of something can't be reached by the protocol with a higher priority
   treacle.setEncryptionKey(encryptionKey);      //Set encryption key for all protocols
   treacle.begin();                              //Start treacle
