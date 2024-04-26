@@ -1,0 +1,67 @@
+/*
+ * 
+ * Basic example for treacle (https://github.com/ncmreynolds/treacle)
+ * 
+ * This example simply enables logging and starts treacle with COBS as a transport.
+ * 
+ * It regularly queues a null-terminataed string to send by treacle
+ * 
+ */
+#include <treacle.h>
+
+uint8_t encryptionKey[] = {0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80};
+uint32_t timeOfLastMessage = 0;
+char message[] = "Hello there";
+
+void setup()
+{
+  Serial.begin(115200);                     //Set up the Serial Monitor
+  delay(1000);                              //Allow the IDE Serial Monitor to start after flashing
+  #if !defined(AVR)
+    treacle.enableDebug(Serial);            //Enable debug on Serial, but not on AVR to reduce memory use
+  #endif
+  Serial1.begin(115200, SERIAL_8N1, 7, 8);  //Port to use for COBS
+  treacle.enableCobs();                     //Enable COBS
+  treacle.setCobsStream(Serial1);           //Set Stream used for COBS
+  treacle.setEncryptionKey(encryptionKey);  //Set encryption key for all protocols
+  Serial.print("Starting COBS talker:");
+  if(treacle.begin())                       //Start treacle
+  {
+    Serial.println("OK");
+  }
+  else
+  {
+    Serial.println("failed");
+  }
+}
+
+void loop()
+{
+  if(treacle.messageWaiting() > 0)
+  {
+    Serial.println(F("Message waiting"));
+    treacle.clearWaitingMessage();
+  }
+  if(millis() - timeOfLastMessage > 30E3) //Send a message every 30s
+  {
+    timeOfLastMessage = millis();
+    if(treacle.online() == true)
+    {
+      Serial.print("Queuing message: '");
+      Serial.print(message);
+      Serial.print("' - ");
+      if(treacle.queueMessage(message))
+      {
+        Serial.println("OK");
+      }
+      else
+      {
+        Serial.println("failed, perhaps queue is full");
+      }
+    }
+    else
+    {
+      Serial.println("Can't send message, treacle offline");
+    }
+  }
+}

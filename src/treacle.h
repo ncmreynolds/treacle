@@ -32,7 +32,7 @@
 #if defined(AVR) || defined(ESP8266) || defined(ESP32)
 	#define TREACLE_SUPPORT_MQTT
 #endif
-//#define TREACLE_SUPPORT_COBS
+#define TREACLE_SUPPORT_COBS
 
 #define TREACLE_ENCRYPT_WITH_CBC
 //#define TREACLE_ENCRYPT_WITH_EAX
@@ -301,7 +301,7 @@ class treacleClass	{
 			uint32_t getUDPTxPacketsDropped();			//Get packet stats
 			float getUDPDutyCycle();					//Get packet stats
 			uint32_t getUDPDutyCycleExceptions();		//Get packet stats
-			void setUDPTickInterval(uint16_t tick);	//Set the interval between packets
+			void setUDPTickInterval(uint16_t tick);		//Set the interval between packets
 			uint16_t getUDPTickInterval();				//Get interval between packets
 		#endif
 		//COBS/Serial
@@ -309,6 +309,7 @@ class treacleClass	{
 			void enableCobs();
 			bool cobsEnabled();
 			bool cobsInitialised();
+			void setCobsStream(Stream &);
 		#endif
 		//Messaging
 		bool online();								//Is treacle online? ie. has this node heard back from a peer that has heard it recently
@@ -579,12 +580,13 @@ class treacleClass	{
 		//COBS/Serial specific settings
 		#if defined(TREACLE_SUPPORT_COBS)
 			uint8_t cobsTransportId = 255;					//ID assigned to this transport if enabled, 255 implies it is not
-			Stream *cobsUart_ = nullptr;					//COBS happens over a UART
-			uint32_t cobsBaudRate = 115200;					//COBS needs a baud rate
+			Stream *cobsStream_ = nullptr;					//COBS happens over a UART
+			uint32_t cobsNominalBaudrate = 9600;			//Nominal baudrate for sending packets to avoid overfilling buffers
 			//COBS/Serial specific functions
 			bool initialiseCobs();							//Initialise Cobs and return result
 			bool sendBufferByCobs(uint8_t*,					//Send a buffer using COBS
 				uint8_t);
+			bool receiveCobs();								//Polling receive function
 		#endif
 			
 		//MQTT specific settings

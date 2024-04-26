@@ -1533,6 +1533,12 @@ uint32_t treacleClass::messageWaiting()
 			receiveUDP();
 		}
 	#endif
+	#if defined(TREACLE_SUPPORT_COBS)
+		if(cobsTransportId != 255 && transport[cobsTransportId].initialised == true)	//Polling method for COBS packets, must be enabled and initialised
+		{
+			receiveCobs();
+		}
+	#endif
 	if(currentState == state::uninitialised || currentState == state::starting || currentState == state::stopped)
 	{
 		return 0;						//Nothing can be sent or received in these states
