@@ -30,9 +30,9 @@ Treacle uses other libraries to encapsulate and send packets so support is depen
 
 | Platform          | ESP-Now | UDP Multicast            | MQTT                     | LoRa    | Infrared | COBS    |
 | ----------------- | ------- | ------------------------ | ------------------------ | ------- | -------- | ------- |
-| ESP8266           | ✓       | ✓                        | ✓                        | ✓       | ?        | Planned |
-| ESP32             | ✓       | ✓                        | ✓                        | ✓       | Planned  | Planned |
-| AVR               |         | ✓ (Ethernet on Mega2560) | ✓ (Ethernet on Mega2560) | ✓       | ?        | Planned |
+| ESP8266           | ✓       | ✓                        | ✓                        | ✓       | ?        | ✓       |
+| ESP32             | ✓       | ✓                        | ✓                        | ✓       | Planned  | ✓       |
+| AVR               |         | ✓ (Ethernet on Mega2560) | ✓ (Ethernet on Mega2560) | ✓       | ?        | ✓       |
 | Raspberry Pi Pico |         | ?                        | Planned                  | Planned | ?        | Planned |
 
 Transports are prioritised in the order they are initialised in the code.
