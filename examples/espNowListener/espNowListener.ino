@@ -18,10 +18,20 @@ void setup()
 {
   Serial.begin(115200);                     //Set up the Serial Monitor
   delay(1000);                              //Allow the IDE Serial Monitor to start after flashing
-  treacle.enableDebug(Serial);              //Enable debug on Serial
+  #if !defined(AVR)
+    treacle.enableDebug(Serial);              //Enable debug on Serial, but not on AVR to reduce memory use
+  #endif
   treacle.enableEspNow();                   //Enable ESP-Now
   treacle.setEncryptionKey(encryptionKey);  //Set encryption key for all protocols
-  treacle.begin();                          //Start treacle
+  Serial.print("Starting ESP-Now listener:");
+  if(treacle.begin())                           //Start treacle
+  {
+    Serial.println("OK");
+  }
+  else
+  {
+    Serial.println("failed");
+  }
 }
 
 void loop()

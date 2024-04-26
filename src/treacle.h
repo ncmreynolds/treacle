@@ -9,6 +9,7 @@
 #ifndef treacle_h
 #define treacle_h
 #include <Arduino.h>
+#include <ArduinoUniqueID.h>
 
 #if !defined(AVR)
 	#define TREACLE_DEBUG
@@ -534,11 +535,6 @@ class treacleClass	{
 		bool packetInQueue();							//Check queue for every transport
 		bool packetInQueue(uint8_t);					//Check queue for a specific transport
 		bool online(uint8_t, uint8_t);					//Is a specific treacle node online for a specific protocol? ie. has this node heard from it recently
-
-		//Local MAC address, used in MQTT/UDP
-		#if defined(ESP8266) || defined(ESP32)
-			uint8_t localMacAddress[6];
-		#endif
 		
 		//ESP-Now specific settings
 		#if defined(TREACLE_SUPPORT_ESPNOW)

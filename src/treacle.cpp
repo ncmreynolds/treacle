@@ -56,66 +56,59 @@ bool treacleClass::begin(uint8_t maxNodes)
 	//The name is important so assign one if it is not set. This is based off MAC address on ESP8266/ESP32
 	if(currentNodeName == nullptr)
 	{
-		uint8_t localMacAddress[6];
-		#if defined(ESP8266) || defined(ESP32)
-			WiFi.macAddress(localMacAddress);
-		#elif defined(AVR)
-			localMacAddress[4] = random(0,256);
-			localMacAddress[5] = random(0,256);
-		#endif
 		#if defined(TREACLE_SUPPORT_ESPNOW) && defined(TREACLE_SUPPORT_LORA) && defined(TREACLE_SUPPORT_COBS)
 			if(currentNodeName == nullptr && espNowEnabled() && loRaEnabled() && cobsEnabled())
 			{
-				currentNodeName = new char[22];
-				sprintf_P(currentNodeName, PSTR("EspNow_LoRa_COBS_%02X%02X"), localMacAddress[4], localMacAddress[5]);  //Add some hex from the MAC address on the end
+				currentNodeName = new char[34];
+				sprintf_P(currentNodeName, PSTR("EspNow_LoRa_COBS_%02X%02X%02X%02X%02X%02X%02X%02X"),UniqueID8[0] ,UniqueID8[1] ,UniqueID8[2] ,UniqueID8[3] ,UniqueID8[4] ,UniqueID8[5] ,UniqueID8[6],UniqueID8[7]);  //Add the UniqueID to a standard name
 			}
 		#endif
 		#if defined(TREACLE_SUPPORT_ESPNOW) && defined(TREACLE_SUPPORT_LORA)
 			if(currentNodeName == nullptr && espNowEnabled() && loRaEnabled())
 			{
-				currentNodeName = new char[17];
-				sprintf_P(currentNodeName, PSTR("EspNow_LoRa_%02X%02X"), localMacAddress[4], localMacAddress[5]);  //Add some hex from the MAC address on the end
+				currentNodeName = new char[29];
+				sprintf_P(currentNodeName, PSTR("EspNow_LoRa_%02X%02X%02X%02X%02X%02X%02X%02X"),UniqueID8[0] ,UniqueID8[1] ,UniqueID8[2] ,UniqueID8[3] ,UniqueID8[4] ,UniqueID8[5] ,UniqueID8[6],UniqueID8[7]);  //Add the UniqueID to a standard name
 			}
 		#endif
 		#if defined(TREACLE_SUPPORT_ESPNOW) && defined(TREACLE_SUPPORT_COBS)
 			if(currentNodeName == nullptr && espNowEnabled()&& cobsEnabled())
 			{
-				currentNodeName = new char[17];
-				sprintf_P(currentNodeName, PSTR("EspNow_COBS_%02X%02X"), localMacAddress[4], localMacAddress[5]);  //Add some hex from the MAC address on the end
+				currentNodeName = new char[29];
+				sprintf_P(currentNodeName, PSTR("EspNow_COBS_%02X%02X%02X%02X%02X%02X%02X%02X"),UniqueID8[0] ,UniqueID8[1] ,UniqueID8[2] ,UniqueID8[3] ,UniqueID8[4] ,UniqueID8[5] ,UniqueID8[6],UniqueID8[7]);  //Add the UniqueID to a standard name
 			}
 		#endif
 		#if defined(TREACLE_SUPPORT_LORA) && defined(TREACLE_SUPPORT_COBS)
 			if(currentNodeName == nullptr && loRaEnabled() && cobsEnabled())
 			{
-				currentNodeName = new char[15];
-				sprintf_P(currentNodeName, PSTR("LoRa_COBS_%02X%02X"), localMacAddress[4], localMacAddress[5]);  //Add some hex from the MAC address on the end
+				currentNodeName = new char[27];
+				sprintf_P(currentNodeName, PSTR("LoRa_COBS_%02X%02X%02X%02X%02X%02X%02X%02X"),UniqueID8[0] ,UniqueID8[1] ,UniqueID8[2] ,UniqueID8[3] ,UniqueID8[4] ,UniqueID8[5] ,UniqueID8[6],UniqueID8[7]);  //Add the UniqueID to a standard name
 			}
 		#endif
 		#if defined(TREACLE_SUPPORT_ESPNOW)
 			if(currentNodeName == nullptr && espNowEnabled())
 			{
-				currentNodeName = new char[12];
-				sprintf_P(currentNodeName, PSTR("EspNow_%02X%02X"), localMacAddress[4], localMacAddress[5]);  //Add some hex from the MAC address on the end
+				currentNodeName = new char[24];
+				sprintf_P(currentNodeName, PSTR("EspNow_%02X%02X%02X%02X%02X%02X%02X%02X"),UniqueID8[0] ,UniqueID8[1] ,UniqueID8[2] ,UniqueID8[3] ,UniqueID8[4] ,UniqueID8[5] ,UniqueID8[6],UniqueID8[7]);  //Add the UniqueID to a standard name
 			}
 		#endif
 		#if defined(TREACLE_SUPPORT_LORA)
 			if(currentNodeName == nullptr && loRaEnabled())
 			{
-				currentNodeName = new char[10];
-				sprintf_P(currentNodeName, PSTR("LoRa_%02X%02X"), localMacAddress[4], localMacAddress[5]);  //Add some hex from the MAC address on the end
+				currentNodeName = new char[22];
+				sprintf_P(currentNodeName, PSTR("LoRa_%02X%02X%02X%02X%02X%02X%02X%02X"),UniqueID8[0] ,UniqueID8[1] ,UniqueID8[2] ,UniqueID8[3] ,UniqueID8[4] ,UniqueID8[5] ,UniqueID8[6],UniqueID8[7]);  //Add the UniqueID to a standard name
 			}
 		#endif
 		#if defined(TREACLE_SUPPORT_COBS)
 			if(currentNodeName == nullptr && cobsEnabled())
 			{
-				currentNodeName = new char[10];
-				sprintf_P(currentNodeName, PSTR("COBS_%02X%02X"), localMacAddress[4], localMacAddress[5]);  //Add some hex from the MAC address on the end
+				currentNodeName = new char[22];
+				sprintf_P(currentNodeName, PSTR("COBS_%02X%02X%02X%02X%02X%02X%02X%02X"),UniqueID8[0] ,UniqueID8[1] ,UniqueID8[2] ,UniqueID8[3] ,UniqueID8[4] ,UniqueID8[5] ,UniqueID8[6],UniqueID8[7]);  //Add the UniqueID to a standard name
 			}
 		#endif
 		if(currentNodeName == nullptr)
 		{
-			currentNodeName = new char[10];
-			sprintf_P(currentNodeName, PSTR("node_%02X%02X"), localMacAddress[4], localMacAddress[5]);  //Add some hex from the MAC address on the end
+			currentNodeName = new char[22];
+			sprintf_P(currentNodeName, PSTR("node_%02X%02X%02X%02X%02X%02X%02X%02X"),UniqueID8[0] ,UniqueID8[1] ,UniqueID8[2] ,UniqueID8[3] ,UniqueID8[4] ,UniqueID8[5] ,UniqueID8[6],UniqueID8[7]);  //Add the UniqueID to a standard name
 		}
 	}
 	#if defined(TREACLE_DEBUG)
