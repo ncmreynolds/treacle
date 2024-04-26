@@ -57,7 +57,12 @@ bool treacleClass::begin(uint8_t maxNodes)
 	if(currentNodeName == nullptr)
 	{
 		uint8_t localMacAddress[6];
-		WiFi.macAddress(localMacAddress);
+		#if defined(ESP8266) || defined(ESP32)
+			WiFi.macAddress(localMacAddress);
+		#elif defined(ARDUINO_AVR)
+			localMacAddress[4] = random(0,256);
+			localMacAddress[5] = random(0,256);
+		#endif
 		#if defined(TREACLE_SUPPORT_ESPNOW) && defined(TREACLE_SUPPORT_LORA) && defined(TREACLE_SUPPORT_COBS)
 			if(currentNodeName == nullptr && espNowEnabled() && loRaEnabled() && cobsEnabled())
 			{
