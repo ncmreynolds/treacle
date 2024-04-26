@@ -112,6 +112,17 @@ bool treacleClass::initialiseUDP()
 			transport[UDPTransportId].initialised = true;				//Mark as initialised
 			transport[UDPTransportId].defaultTick = maximumTickTime/10;	//Set default tick timer
 		}
+	#elif defined(AVR)
+		udp = new EthernetUDP;
+		//if(udp->beginMulticast(Ethernet.localIP(),udpMulticastAddress, udpPort))
+		if(udp->beginMulticast(udpMulticastAddress, udpPort))
+		{
+			#if defined(TREACLE_DEBUG)
+				debugPrintln(treacleDebugString_OK);
+			#endif
+			transport[UDPTransportId].initialised = true;				//Mark as initialised
+			transport[UDPTransportId].defaultTick = maximumTickTime/10;	//Set default tick timer
+		}
 	#endif
 	else
 	{

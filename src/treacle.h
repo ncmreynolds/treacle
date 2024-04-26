@@ -25,7 +25,7 @@
 #if defined(AVR) || defined(ESP8266) || defined(ESP32)
 	#define TREACLE_SUPPORT_LORA
 #endif
-#if defined(ESP8266) || defined(ESP32)
+#if defined(AVR) || defined(ESP8266) || defined(ESP32)
 	#define TREACLE_SUPPORT_UDP
 #endif
 #if defined(AVR) || defined(ESP8266) || defined(ESP32)
@@ -67,6 +67,8 @@
 		#include <WiFiUdp.h>
 	#elif defined(ESP32)
 		#include <AsyncUDP.h>
+	#elif defined(AVR)
+		#include <EthernetUdp.h>
 	#endif
 #endif
 
@@ -301,9 +303,6 @@ class treacleClass	{
 			void setUDPTickInterval(uint16_t tick);	//Set the interval between packets
 			uint16_t getUDPTickInterval();				//Get interval between packets
 		#endif
-		#if defined(AVR) && (defined(TREACLE_SUPPORT_MQTT) || defined(TREACLE_SUPPORT_UDP))
-			void setMacAddress(uint8_t*);
-		#endif
 		//COBS/Serial
 		#if defined(TREACLE_SUPPORT_COBS)
 			void enableCobs();
@@ -537,7 +536,7 @@ class treacleClass	{
 		bool online(uint8_t, uint8_t);					//Is a specific treacle node online for a specific protocol? ie. has this node heard from it recently
 
 		//Local MAC address, used in MQTT/UDP
-		#if defined(ESP8266) || defined(ESP32) || defined(TREACLE_SUPPORT_UDP) || defined(TREACLE_SUPPORT_MQTT)
+		#if defined(ESP8266) || defined(ESP32)
 			uint8_t localMacAddress[6];
 		#endif
 		
@@ -630,6 +629,9 @@ class treacleClass	{
 				bool receiveUDP();							//Polling receiver
 			#elif defined(ESP32)
 				AsyncUDP* udp;								//UDP instance
+			#elif defined(AVR)
+				EthernetUDP* udp;							//UDP instance
+				bool receiveUDP();							//Polling receiver
 			#endif
 			IPAddress udpMulticastAddress = {224,0,1,38};	//Multicast address
 			uint16_t udpPort = 47625;						//UDP port number
