@@ -59,7 +59,7 @@ bool treacleClass::begin(uint8_t maxNodes)
 		uint8_t localMacAddress[6];
 		#if defined(ESP8266) || defined(ESP32)
 			WiFi.macAddress(localMacAddress);
-		#elif defined(ARDUINO_AVR)
+		#elif defined(AVR)
 			localMacAddress[4] = random(0,256);
 			localMacAddress[5] = random(0,256);
 		#endif
@@ -1534,7 +1534,7 @@ uint32_t treacleClass::messageWaiting()
 			receiveLoRa();
 		}
 	#endif
-	#if defined(ESP8266) && defined(TREACLE_SUPPORT_UDP)
+	#if defined(TREACLE_SUPPORT_UDP) && (defined(ESP8266) || defined(AVR))
 		if(UDPTransportId != 255 && transport[UDPTransportId].initialised == true)	//Polling method for UDP packets, must be enabled and initialised
 		{
 			receiveUDP();

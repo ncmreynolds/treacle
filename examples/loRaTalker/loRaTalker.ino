@@ -19,12 +19,14 @@ void setup()
 {
   Serial.begin(115200);                         //Set up the Serial Monitor
   delay(1000);                                  //Allow the IDE Serial Monitor to start after flashing
-  Serial.print("Starting LoRa talker:");
-  treacle.enableDebug(Serial);                  //Enable debug on Serial
+  #if !defined(AVR)
+    treacle.enableDebug(Serial);              //Enable debug on Serial, but not on AVR to reduce memory use
+  #endif
   treacle.setLoRaPins(loRaCsPin, loRaResetPin); //Set the LoRa reset and CS pins, assuming other default SPI pins
   treacle.setLoRaFrequency(868E6);              //Set the LoRa frequency to 868Mhz. Valid value are 433/868/915Mhz depending on region
   treacle.enableLoRa();                         //Enable LoRa, this will only be used of something can't be reached by the protocol with a higher priority
   treacle.setEncryptionKey(encryptionKey);      //Set encryption key for all protocols
+  Serial.print("Starting LoRa talker:");
   if(treacle.begin())                           //Start treacle
   {
     Serial.println("OK");

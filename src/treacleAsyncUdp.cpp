@@ -114,7 +114,6 @@ bool treacleClass::initialiseUDP()
 		}
 	#elif defined(AVR)
 		udp = new EthernetUDP;
-		//if(udp->beginMulticast(Ethernet.localIP(),udpMulticastAddress, udpPort))
 		if(udp->beginMulticast(udpMulticastAddress, udpPort))
 		{
 			#if defined(TREACLE_DEBUG)
@@ -133,7 +132,7 @@ bool treacleClass::initialiseUDP()
 	}
 	return transport[UDPTransportId].initialised;
 }
-#if defined(ESP8266)
+#if defined(ESP8266) || defined(AVR)
 bool treacleClass::receiveUDP()
 {
 	uint8_t receivedMessageLength = udp->parsePacket();
@@ -181,6 +180,17 @@ bool treacleClass::sendBufferByUDP(uint8_t* buffer, uint8_t packetSize)
 		}
 	#elif defined(ESP32)
 		if(udp->write(buffer, packetSize))
+		{
+			transport[UDPTransportId].txTime += micros()			//Add to the total transmit time
+				- transport[UDPTransportId].txStartTime;
+			transport[UDPTransportId].txStartTime = 0;				//Clear the initial send time
+			transport[UDPTransportId].txPackets++;					//Count the packet
+			return true;
+		}
+	#elif defined(AVR)
+		udp->beginPacket(udpMulticastAddress, udpPort);
+		udp->write(buffer, packetSize);
+		if(udp->endPacket())
 		{
 			transport[UDPTransportId].txTime += micros()			//Add to the total transmit time
 				- transport[UDPTransportId].txStartTime;
