@@ -122,6 +122,7 @@ bool treacleClass::initialiseUDP()
 	}
 	return transport[UDPTransportId].initialised;
 }
+#if defined(ESP8266)
 bool treacleClass::receiveUDP()
 {
 	uint8_t receivedMessageLength = udp->parsePacket();
@@ -152,7 +153,7 @@ bool treacleClass::receiveUDP()
 	}
 	return false;
 }
-
+#endif
 bool treacleClass::sendBufferByUDP(uint8_t* buffer, uint8_t packetSize)
 {
 	transport[UDPTransportId].txStartTime = micros();

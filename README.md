@@ -28,12 +28,12 @@ Treacle uses other libraries to encapsulate and send packets so support is depen
 
 
 
-| Platform          | ESP-Now | UDP Multicast | MQTT    | LoRa    | COBS    |
-| ----------------- | ------- | ------------- | ------- | ------- | ------- |
-| ESP8266           | ✓       | ✓             | ✓       | Planned | Planned |
-| ESP32             | ✓       | ✓             | ✓       | ✓       | Planned |
-| AVR (Ethernet)    |         | ?             | Planned | Planned | Planned |
-| Raspberry Pi Pico |         | ?             | Planned | Planned | Planned |
+| Platform          | ESP-Now | UDP Multicast | MQTT               | LoRa    | Infrared | COBS    |
+| ----------------- | ------- | ------------- | ------------------ | ------- | -------- | ------- |
+| ESP8266           | ✓       | ✓             | ✓                  | Planned | ?        | Planned |
+| ESP32             | ✓       | ✓             | ✓                  | ✓       | Planned  | Planned |
+| AVR               |         | ?             | Planned (Ethernet) | Planned | ?        | Planned |
+| Raspberry Pi Pico |         | ?             | Planned            | Planned | ?        | Planned |
 
 Transports are prioritised in the order they are initialised in the code.
 
@@ -56,6 +56,10 @@ MQTT allows 'nodes' from anywhere with Internet connections to communicate, but 
 ### LoRa
 
 LoRa is an excellent radio technology for long range use with microcontrollers, but is high latency and has strong limits on how often you can transmit. Making Treacle usable over LoRa along with ESP-Now is a driving factor in the design. Treacle respects the 1% duty cycle for LoRa use and will refuse to send packets that exceed this.
+
+### Infrared
+
+This use the RMT (remote) peripheral on ESP32 to modulate an infrared LED and read from an infrared received in a similar way to how basic IR remote controls work.
 
 ### COBS
 

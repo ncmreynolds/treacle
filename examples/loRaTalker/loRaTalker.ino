@@ -24,7 +24,7 @@ void setup()
   treacle.setLoRaFrequency(868E6);              //Set the LoRa frequency to 868Mhz. Valid value are 433/868/915Mhz depending on region
   treacle.enableEspNow();                       //Enable ESP-Now, this will be the highest proiority protocol
   treacle.enableLoRa();                         //Enable LoRa, this will only be used of something can't be reached by the protocol with a higher priority
-  //treacle.setEncryptionKey(encryptionKey);      //Set encryption key for all protocols
+  treacle.setEncryptionKey(encryptionKey);      //Set encryption key for all protocols
   treacle.begin();                              //Start treacle
 }
 

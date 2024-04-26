@@ -15,7 +15,9 @@
 #if defined(ESP8266) || defined(ESP32)
 	#define TREACLE_SUPPORT_ESPNOW
 #endif
-//#define TREACLE_SUPPORT_LORA
+#if defined(ESP8266) || defined(ESP32)
+	#define TREACLE_SUPPORT_LORA
+#endif
 #if defined(ESP8266) || defined(ESP32)
 	#define TREACLE_SUPPORT_UDP
 #endif
