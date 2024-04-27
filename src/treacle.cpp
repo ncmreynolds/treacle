@@ -657,7 +657,7 @@ bool treacleClass::sendPacketOnTick()
 						{
 							for(uint8_t nodeIndex = 0; nodeIndex < numberOfNodes; nodeIndex++)
 							{
-								if(node[nodeIndex].name == nullptr && packetInQueue() == false)		//This node has no name yet
+								if(node[nodeIndex].name == nullptr && online(node[nodeIndex].id) && packetInQueue() == false)		//This node has no name yet
 								{
 									buildNameResolutionRequestPacket(transportId, node[nodeIndex].id);	//Ask for the node's name with an id->name request
 									#if defined(TREACLE_DEBUG)
@@ -796,9 +796,9 @@ void treacleClass::buildPacketHeader(uint8_t transportId, uint8_t recipient, pay
 	transport[transportId].transmitBuffer[(uint8_t)headerPosition::payloadType] = (uint8_t)type;								//Payload type
 	transport[transportId].transmitBuffer[(uint8_t)headerPosition::payloadNumber] = transport[transportId].payloadNumber++;		//Payload number, which post-increments
 	transport[transportId].transmitBuffer[(uint8_t)headerPosition::packetLength] = 0;											//Payload length - starts at 0 and gets updated later
-	transport[transportId].transmitBuffer[(uint8_t)headerPosition::blockIndex] = 0;												//Large payload start bits 16-23
-	transport[transportId].transmitBuffer[(uint8_t)headerPosition::blockIndex+1] = 0;											//Large payload start bits 8-15
-	transport[transportId].transmitBuffer[(uint8_t)headerPosition::blockIndex+2] = 0;											//Large payload start bits 0-7
+	transport[transportId].transmitBuffer[(uint8_t)headerPosition::blockIndex] = random(0,256);									//Large payload start bits 16-23, by default just randomised
+	transport[transportId].transmitBuffer[(uint8_t)headerPosition::blockIndex+1] = random(0,256);								//Large payload start bits 8-15
+	transport[transportId].transmitBuffer[(uint8_t)headerPosition::blockIndex+2] = random(0,256);								//Large payload start bits 0-7
 	transport[transportId].transmitBuffer[(uint8_t)headerPosition::nextTick] = (transport[transportId].nextTick & 0xff00) >> 8;	//nextTick bits 8-15
 	transport[transportId].transmitBuffer[(uint8_t)headerPosition::nextTick+1] = (transport[transportId].nextTick & 0x00ff);	//nextTick bits 0-7
 	//
@@ -1026,6 +1026,7 @@ void treacleClass::unpackPacket()
 					debugPrintln(treacleDebugString_checksum_invalid);
 				#endif
 				clearReceiveBuffer();
+				transport[receiveTransport].rxPacketsInvalid++;				//Note the invalid packet
 			}
 		}
 		else
@@ -1034,6 +1035,7 @@ void treacleClass::unpackPacket()
 				debugPrintln(treacleDebugString_inconsistent);
 			#endif
 			clearReceiveBuffer();
+			transport[receiveTransport].rxPacketsInvalid++;					//Note the invalid packet
 		}
 	}
 	else
@@ -1042,6 +1044,7 @@ void treacleClass::unpackPacket()
 			debugPrintln(treacleDebugString_tooShort);
 		#endif
 		clearReceiveBuffer();
+		transport[receiveTransport].rxPacketsInvalid++;						//Note the invalid packet
 	}
 }
 void treacleClass::unpackKeepalivePacket(uint8_t transportId, uint8_t senderId)
@@ -1764,17 +1767,25 @@ uint8_t treacleClass::maxPayloadSize()
 			debugPrint(transport[transportId].calculatedDutyCycle);
 			debugPrint('%');
 			debugPrint(' ');
-			debugPrint(treacleDebugString_TXcolon);
+			debugPrint(treacleDebugString_TX);
+			debugPrint(':');
 			debugPrint(transport[transportId].txPackets);
 			debugPrint(' ');
-			debugPrint(treacleDebugString_TX_drops_colon);
+			debugPrint(treacleDebugString_TX);
+			debugPrint(treacleDebugString_drops_colon);
 			debugPrint(transport[transportId].txPacketsDropped);
 			debugPrint(' ');
-			debugPrint(treacleDebugString_RXcolon);
+			debugPrint(treacleDebugString_RX);
+			debugPrint(':');
 			debugPrint(transport[transportId].rxPackets);
 			debugPrint(' ');
-			debugPrint(treacleDebugString_RX_drops_colon);
-			debugPrintln(transport[transportId].rxPacketsDropped);
+			debugPrint(treacleDebugString_RX);
+			debugPrint(treacleDebugString_drops_colon);
+			debugPrint(transport[transportId].rxPacketsDropped);
+			debugPrint(' ');
+			debugPrint(treacleDebugString_RX);
+			debugPrint(treacleDebugString_invalid_colon);
+			debugPrintln(transport[transportId].rxPacketsInvalid);
 		}
 		for(uint8_t nodeIndex = 0; nodeIndex < numberOfNodes; nodeIndex++)
 		{

@@ -176,10 +176,10 @@
 	const char treacleDebugString_reached[] PROGMEM = "reached";
 	const char treacleDebugString_with[] PROGMEM = "with";
 	const char treacleDebugString_duty_cycle_exceeded[] PROGMEM = "duty cycle exceeded";
-	const char treacleDebugString_TXcolon[] PROGMEM = "TX:";
-	const char treacleDebugString_TX_drops_colon[] PROGMEM = "TX drops:";
-	const char treacleDebugString_RXcolon[] PROGMEM = "RX:";
-	const char treacleDebugString_RX_drops_colon[] PROGMEM = "RX drops:";
+	const char treacleDebugString_TX[] PROGMEM = "TX";
+	const char treacleDebugString_RX[] PROGMEM = "RX";
+	const char treacleDebugString_drops_colon[] PROGMEM = " drops:";
+	const char treacleDebugString_invalid_colon[] PROGMEM = " invalid:";
 	const char treacleDebugString_up[] PROGMEM = "up";
 	const char treacleDebugString_suggested_message_interval[] PROGMEM = "suggested message interval";
 	#if defined(TREACLE_SUPPORT_MQTT)
@@ -386,6 +386,7 @@ class treacleClass	{
 			uint32_t rxPackets = 0;						//Simple stats for successfully received packets
 			uint32_t rxPacketsProcessed = 0;			//Simple stats for successfully received packets that were passed on for processing
 			uint32_t rxPacketsDropped = 0;				//Simple stats for received packets that were dropped, probably due to a full buffer
+			uint32_t rxPacketsInvalid = 0;				//Simple stats for received packets that were invalid, probably due to a wrong encryption key
 			uint32_t txStartTime = 0;					//Used to calculate TX time for each packet using micros()
 			uint32_t txTime = 0;						//Total time in micros() spent transmitting
 			float calculatedDutyCycle = 0;				//Calculated from txTime and millis()
