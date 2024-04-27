@@ -185,6 +185,10 @@ bool treacleClass::initialiseMQTT()
 							treacle.receiveTransport = treacle.MQTTTransportId;						//Record that it was received by ESP-Now
 							treacle.transport[treacle.MQTTTransportId].rxPacketsProcessed++;		//Count the packet as processed
 						}
+						else
+						{
+							treacle.transport[treacle.MQTTTransportId].rxPacketsIgnored++;			//Count the ignore
+						}
 					}
 					return;
 				}
@@ -199,8 +203,9 @@ bool treacleClass::initialiseMQTT()
 			#if defined(TREACLE_DEBUG)
 				debugPrintln(treacleDebugString_OK);
 			#endif
-			transport[MQTTTransportId].initialised = true;				//Mark as initialised
-			transport[MQTTTransportId].defaultTick = maximumTickTime/5;//Set default tick timer
+			transport[MQTTTransportId].initialised = true;					//Mark as initialised
+			transport[MQTTTransportId].defaultTick = maximumTickTime/10;	//Set default tick timer
+			transport[MQTTTransportId].minimumTick = maximumTickTime/100;	//Set minimum tick timer
 		}
 		else
 		{
@@ -330,6 +335,7 @@ uint32_t treacleClass::getMQTTDutyCycleExceptions()
 void treacleClass::setMQTTTickInterval(uint16_t tick)
 {
 	transport[MQTTTransportId].defaultTick = tick;
+	transport[MQTTTransportId].minimumTick = tick/10;
 }
 uint16_t treacleClass::getMQTTTickInterval()
 {

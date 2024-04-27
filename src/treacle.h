@@ -33,6 +33,7 @@
 	#define TREACLE_SUPPORT_MQTT
 #endif
 #define TREACLE_SUPPORT_COBS
+//#define TREACLE_DEBUG_COBS
 
 #define TREACLE_ENCRYPT_WITH_CBC
 //#define TREACLE_ENCRYPT_WITH_EAX
@@ -180,6 +181,7 @@
 	const char treacleDebugString_RX[] PROGMEM = "RX";
 	const char treacleDebugString_drops_colon[] PROGMEM = " drops:";
 	const char treacleDebugString_invalid_colon[] PROGMEM = " invalid:";
+	const char treacleDebugString_ignored_colon[] PROGMEM = " ignored:";
 	const char treacleDebugString_up[] PROGMEM = "up";
 	const char treacleDebugString_suggested_message_interval[] PROGMEM = "suggested message interval";
 	#if defined(TREACLE_SUPPORT_MQTT)
@@ -310,6 +312,7 @@ class treacleClass	{
 			bool cobsEnabled();
 			bool cobsInitialised();
 			void setCobsStream(Stream &);
+			void setCobsTickInterval(uint16_t tick);
 		#endif
 		//Messaging
 		bool online();								//Is treacle online? ie. has this node heard back from a peer that has heard it recently
@@ -369,7 +372,6 @@ class treacleClass	{
 		//Ticks
 		static const uint16_t maximumTickTime = 60E3;	//Absolute longest time something can be scheduled in the future
 		//Tick functions
-		uint16_t minimumTickTime(uint8_t);				//Absolute minimum tick time
 		void setNextTickTime();							//Set a next tick time for all transports, done at startup
 		void setNextTickTime(uint8_t);					//Set a next tick time immediately before sending for a specific transport
 		uint16_t tickRandomisation(uint8_t);			//Random factor for timing
@@ -386,6 +388,7 @@ class treacleClass	{
 			uint32_t rxPackets = 0;						//Simple stats for successfully received packets
 			uint32_t rxPacketsProcessed = 0;			//Simple stats for successfully received packets that were passed on for processing
 			uint32_t rxPacketsDropped = 0;				//Simple stats for received packets that were dropped, probably due to a full buffer
+			uint32_t rxPacketsIgnored = 0;				//Simple stats for received packets that were ignored, probably due to being for another node
 			uint32_t rxPacketsInvalid = 0;				//Simple stats for received packets that were invalid, probably due to a wrong encryption key
 			uint32_t txStartTime = 0;					//Used to calculate TX time for each packet using micros()
 			uint32_t txTime = 0;						//Total time in micros() spent transmitting
@@ -394,6 +397,7 @@ class treacleClass	{
 			uint32_t dutyCycleExceptions = 0;			//Count any time it goes over duty cycle
 			uint32_t lastTick = 0;						//Track this node's ticks
 			uint16_t defaultTick = maximumTickTime;		//Frequency of ticks for each transport, which is important
+			uint16_t minimumTick = maximumTickTime/2;	//Minimum frequency of ticks for each transport, which is important
 			uint16_t nextTick = 0;						//How long until the next tick for each transport, which is important. This varies slightly from the default.
 			uint8_t transmitBuffer[maximumBufferSize];	//General transmit buffer
 			uint8_t transmitPacketSize = 0;				//Current transmit packet size
@@ -656,8 +660,7 @@ class treacleClass	{
 			{
 				if(debug_uart_ != nullptr)
 				{
-					Serial.print(thingToPrint);
-					//debug_uart_->print(thingToPrint);
+					debug_uart_->print(thingToPrint);
 				}
 			}
 			template <class T>
@@ -665,16 +668,14 @@ class treacleClass	{
 			{
 				if(debug_uart_ != nullptr)
 				{
-					Serial.println(thingToPrint);
-					//debug_uart_->println(thingToPrint);
+					debug_uart_->println(thingToPrint);
 				}
 			}
 			void debugPrintln()
 			{
 				if(debug_uart_ != nullptr)
 				{
-					Serial.println();
-					//debug_uart_->println();
+					debug_uart_->println();
 				}
 			}			
 			void debugPrintTransportName(uint8_t transport)

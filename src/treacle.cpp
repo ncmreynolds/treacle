@@ -577,25 +577,6 @@ void treacleClass::changeCurrentState(state newState)
  *	Tick timers
  *
  */
-uint16_t treacleClass::minimumTickTime(uint8_t transportId)
-{
-	#if defined(TREACLE_SUPPORT_ESPNOW)
-		if(transportId == espNowTransportId) return	1000;
-	#endif
-	#if defined(TREACLE_SUPPORT_LORA)
-		if(transportId == loRaTransportId) return 5000;
-	#endif
-	#if defined(TREACLE_SUPPORT_MQTT)
-		if(transportId == MQTTTransportId) return 1000;
-	#endif
-	#if defined(TREACLE_SUPPORT_UDP)
-		if(transportId == UDPTransportId) return 500;
-	#endif
-	#if defined(TREACLE_SUPPORT_COBS)
-		if(transportId == cobsTransportId) return 2500;
-	#endif
-	return 1000;
-}
 void treacleClass::setNextTickTime()
 {
 	for(uint8_t transportIndex = 0; transportIndex < numberOfActiveTransports; transportIndex++)
@@ -609,7 +590,7 @@ void treacleClass::setNextTickTime(uint8_t transportId)
 }
 uint16_t treacleClass::tickRandomisation(uint8_t transportId)
 {
-	return random(minimumTickTime(transportId), minimumTickTime(transportId)*2);
+	return random(transport[transportId].minimumTick, transport[transportId].minimumTick*2);
 }
 void treacleClass::bringForwardNextTick()
 {
@@ -643,9 +624,9 @@ bool treacleClass::sendPacketOnTick()
 			{
 				if(packetInQueue(transportId) == false)									//Nothing ready to send from the application for _this_ transport
 				{
-					if(currentState == state::selectingId)							//Speed up ID selection by asking existing node IDs
+					if(currentState == state::selectingId)								//Speed up ID selection by asking existing node IDs
 					{
-						buildIdResolutionRequestPacket(transportId, currentNodeName);		//Ask about this node with a name->Id request
+						buildIdResolutionRequestPacket(transportId, currentNodeName);	//Ask about this node with a name->Id request
 						#if defined(TREACLE_DEBUG)
 							debugPrint(treacleDebugString_idResolutionRequest);
 						#endif
@@ -742,8 +723,8 @@ void treacleClass::timeOutTicks()
 	{
 		for(uint8_t nodeIndex = 0; nodeIndex < numberOfNodes; nodeIndex++)
 		{
-			if(millis() - node[nodeIndex].lastTick[transportId] > node[nodeIndex].nextTick[transportId] + minimumTickTime(transportId)		//Missed the next window
-				&& node[nodeIndex].rxReliability[transportId] > 0																			//Actually has some reliability to begin with
+			if(millis() - node[nodeIndex].lastTick[transportId] > node[nodeIndex].nextTick[transportId] + transport[transportId].minimumTick	//Missed the next window
+				&& node[nodeIndex].rxReliability[transportId] > 0																				//Actually has some reliability to begin with
 				)
 			{
 				node[nodeIndex].rxReliability[transportId] = node[nodeIndex].rxReliability[transportId] >> 1;	//Reduce rxReliability
@@ -1785,7 +1766,11 @@ uint8_t treacleClass::maxPayloadSize()
 			debugPrint(' ');
 			debugPrint(treacleDebugString_RX);
 			debugPrint(treacleDebugString_invalid_colon);
-			debugPrintln(transport[transportId].rxPacketsInvalid);
+			debugPrint(transport[transportId].rxPacketsInvalid);
+			debugPrint(' ');
+			debugPrint(treacleDebugString_RX);
+			debugPrint(treacleDebugString_ignored_colon);
+			debugPrintln(transport[transportId].rxPacketsIgnored);
 		}
 		for(uint8_t nodeIndex = 0; nodeIndex < numberOfNodes; nodeIndex++)
 		{

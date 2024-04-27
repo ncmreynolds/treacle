@@ -47,6 +47,7 @@ bool treacleClass::espNowInitialised()
 void treacleClass::setEspNowTickInterval(uint16_t tick)
 {
 	transport[espNowTransportId].defaultTick = tick;
+	transport[espNowTransportId].minimumTick = tick/10;
 }
 void treacleClass::setEspNowChannel(uint8_t channel)
 {
@@ -311,8 +312,12 @@ void treacleClass::esp8266receiveCallback(uint8_t *macAddress, uint8_t *received
 				memcpy(&receiveBuffer,receivedMessage,receivedMessageLength);	//Copy the ESP-Now payload
 				receiveBufferSize = receivedMessageLength;						//Record the amount of payload
 				receiveBufferCrcChecked = false;								//Mark the payload as unchecked
-				receiveTransport = espNowTransportId;						//Record that it was received by ESP-Now
-				transport[espNowTransportId].rxPacketsProcessed++;		//Count the packet as processed
+				receiveTransport = espNowTransportId;							//Record that it was received by ESP-Now
+				transport[espNowTransportId].rxPacketsProcessed++;				//Count the packet as processed
+			}
+			else
+			{
+				transport[espNowTransportId].rxPacketsIgnored++;			//Count the ignore
 			}
 		}
 		else
@@ -366,76 +371,82 @@ bool treacleClass::initialiseEspNow()
 			if(addEspNowPeer(broadcastMacAddress))
 			{
 				#if defined(ESP8266)
-					esp_now_set_self_role(ESP_NOW_ROLE_COMBO);
-					if(esp_now_register_recv_cb(treacleEsp8266receiveCallbackWrapper) == ESP_OK)	//ESP-Now receive callback
+				esp_now_set_self_role(ESP_NOW_ROLE_COMBO);
+				if(esp_now_register_recv_cb(treacleEsp8266receiveCallbackWrapper) == ESP_OK)	//ESP-Now receive callback
+				{
+					if(esp_now_register_send_cb(treacleEsp8266sendCallbackWrapper) == ESP_OK)	//ESP-Now send callback
 					{
-						if(esp_now_register_send_cb(treacleEsp8266sendCallbackWrapper) == ESP_OK)	//ESP-Now send callback
-						{
-							transport[espNowTransportId].initialised = true;
-							transport[espNowTransportId].defaultTick = maximumTickTime/5;
-							#if defined(TREACLE_DEBUG)
-								debugPrintln(treacleDebugString_OK);
-							#endif
-							return true;
-						}
+						transport[espNowTransportId].initialised = true;
+						#if defined(TREACLE_DEBUG)
+							debugPrintln(treacleDebugString_OK);
+						#endif
 					}
+				}
 				#elif defined(ESP32)
-					if(esp_now_register_recv_cb(	//ESP-Now receive callback
-						[](const uint8_t *macAddress, const uint8_t *receivedMessage, int receivedMessageLength)
+				if(esp_now_register_recv_cb(	//ESP-Now receive callback
+					[](const uint8_t *macAddress, const uint8_t *receivedMessage, int receivedMessageLength)
+					{
+						if(treacle.currentState != treacle.state::starting)	//Must not receive packets before the buffers are allocated
 						{
-							if(treacle.currentState != treacle.state::starting)	//Must not receive packets before the buffers are allocated
+							if(treacle.receiveBufferSize == 0 && receivedMessageLength < treacle.maximumBufferSize)	//Check the receive buffer is empty first
 							{
-								if(treacle.receiveBufferSize == 0 && receivedMessageLength < treacle.maximumBufferSize)	//Check the receive buffer is empty first
+								treacle.transport[treacle.espNowTransportId].rxPackets++;					//Count the packet as received
+								if(receivedMessage[(uint8_t)treacle.headerPosition::recipient] == (uint8_t)treacle.nodeId::allNodes ||
+									receivedMessage[(uint8_t)treacle.headerPosition::recipient] == treacle.currentNodeId)	//Packet is meaningful to this node
 								{
-									treacle.transport[treacle.espNowTransportId].rxPackets++;					//Count the packet as received
-									if(receivedMessage[(uint8_t)treacle.headerPosition::recipient] == (uint8_t)treacle.nodeId::allNodes ||
-										receivedMessage[(uint8_t)treacle.headerPosition::recipient] == treacle.currentNodeId)	//Packet is meaningful to this node
-									{
-										memcpy(&treacle.receiveBuffer,receivedMessage,receivedMessageLength);	//Copy the ESP-Now payload
-										treacle.receiveBufferSize = receivedMessageLength;						//Record the amount of payload
-										treacle.receiveBufferCrcChecked = false;								//Mark the payload as unchecked
-										treacle.receiveTransport = treacle.espNowTransportId;					//Record that it was received by ESP-Now
-										treacle.transport[treacle.espNowTransportId].rxPacketsProcessed++;		//Count the packet as processed
-									}
+									memcpy(&treacle.receiveBuffer,receivedMessage,receivedMessageLength);	//Copy the ESP-Now payload
+									treacle.receiveBufferSize = receivedMessageLength;						//Record the amount of payload
+									treacle.receiveBufferCrcChecked = false;								//Mark the payload as unchecked
+									treacle.receiveTransport = treacle.espNowTransportId;					//Record that it was received by ESP-Now
+									treacle.transport[treacle.espNowTransportId].rxPacketsProcessed++;		//Count the packet as processed
 								}
 								else
 								{
-									treacle.transport[treacle.espNowTransportId].rxPacketsDropped++;			//Count the drop
+									treacle.transport[treacle.espNowTransportId].rxPacketsIgnored++;		//Count the ignore
 								}
+							}
+							else
+							{
+								treacle.transport[treacle.espNowTransportId].rxPacketsDropped++;			//Count the drop
+							}
+						}
+					}
+				) == ESP_OK)
+				{
+					if(esp_now_register_send_cb(															//ESP-Now send callback
+						[](const uint8_t* macAddress, esp_now_send_status_t status)							//ESP-Now send callback is used to measure airtime for duty cycle calculations
+						{
+							if(status == ESP_OK)
+							{
+								if(treacle.transport[treacle.espNowTransportId].txStartTime != 0)			//Check the initial send time was recorded
+								{
+									treacle.transport[treacle.espNowTransportId].txTime += micros()			//Add to the total transmit time
+										- treacle.transport[treacle.espNowTransportId].txStartTime;
+									treacle.transport[treacle.espNowTransportId].txStartTime = 0;			//Clear the initial send time
+								}
+								treacle.transport[treacle.espNowTransportId].txPackets++;					//Count the packet
+							}
+							else
+							{
+								treacle.transport[treacle.espNowTransportId].txPacketsDropped++;			//Count the drop
 							}
 						}
 					) == ESP_OK)
 					{
-						if(esp_now_register_send_cb(															//ESP-Now send callback
-							[](const uint8_t* macAddress, esp_now_send_status_t status)							//ESP-Now send callback is used to measure airtime for duty cycle calculations
-							{
-								if(status == ESP_OK)
-								{
-									if(treacle.transport[treacle.espNowTransportId].txStartTime != 0)			//Check the initial send time was recorded
-									{
-										treacle.transport[treacle.espNowTransportId].txTime += micros()			//Add to the total transmit time
-											- treacle.transport[treacle.espNowTransportId].txStartTime;
-										treacle.transport[treacle.espNowTransportId].txStartTime = 0;			//Clear the initial send time
-									}
-									treacle.transport[treacle.espNowTransportId].txPackets++;					//Count the packet
-								}
-								else
-								{
-									treacle.transport[treacle.espNowTransportId].txPacketsDropped++;			//Count the drop
-								}
-							}
-						) == ESP_OK)
-						{
-							transport[espNowTransportId].initialised = true;
-							transport[espNowTransportId].defaultTick = maximumTickTime/5;
-							#if defined(TREACLE_DEBUG)
-								debugPrintln(treacleDebugString_OK);
-							#endif
-							return true;
-						}
+						transport[espNowTransportId].initialised = true;
+						#if defined(TREACLE_DEBUG)
+							debugPrintln(treacleDebugString_OK);
+						#endif
 					}
+				}
 				#endif
 			}
+		}
+		if(transport[espNowTransportId].initialised == true)
+		{
+			transport[espNowTransportId].defaultTick = maximumTickTime/10;
+			transport[espNowTransportId].minimumTick = maximumTickTime/100;
+			return true;
 		}
 	}
 	transport[espNowTransportId].initialised = false;

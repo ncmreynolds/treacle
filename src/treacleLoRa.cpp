@@ -65,8 +65,9 @@ bool treacleClass::initialiseLoRa()
 		#if defined(TREACLE_DEBUG)
 			debugPrintln(treacleDebugString_OK);
 		#endif
-		transport[loRaTransportId].initialised = true;			//Mark as initialised
-		transport[loRaTransportId].defaultTick =maximumTickTime;//Set default tick timer
+		transport[loRaTransportId].initialised = true;				//Mark as initialised
+		transport[loRaTransportId].defaultTick = maximumTickTime;	//Set default tick timer
+		transport[loRaTransportId].minimumTick = maximumTickTime/4;	//Set minimum tick timer
 		if(loRaIrqPin != -1)									//Callbacks on IRQ pin
 		{
 			LoRa.onTxDone(										//Send callback function
@@ -97,6 +98,10 @@ bool treacleClass::initialiseLoRa()
 								treacle.receiveBufferCrcChecked = false;						//Mark the payload as unchecked
 								treacle.receiveTransport = treacle.loRaTransportId;				//Record that it was received by ESP-Now
 								treacle.transport[treacle.loRaTransportId].rxPacketsProcessed++;//Count the packet as processed
+							}
+							else
+							{
+								treacle.transport[treacle.loRaTransportId].rxPacketsIgnored++;	//Count the ignore
 							}
 							return;
 						}
@@ -182,6 +187,7 @@ uint32_t treacleClass::getLoRaDutyCycleExceptions()
 void treacleClass::setLoRaTickInterval(uint16_t tick)
 {
 	transport[loRaTransportId].defaultTick = tick;
+	transport[loRaTransportId].minimumTick = tick/4;
 }
 uint16_t treacleClass::getLoRaTickInterval()
 {

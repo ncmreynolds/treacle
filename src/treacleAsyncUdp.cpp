@@ -52,83 +52,87 @@ bool treacleClass::initialiseUDP()
 		debugPrint(':');
 	#endif
 	#if defined(ESP8266)
-		udp = new WiFiUDP;
-		if(udp->beginMulticast(WiFi.localIP(),udpMulticastAddress, udpPort))
-		{
-			#if defined(TREACLE_DEBUG)
-				debugPrintln(treacleDebugString_OK);
-			#endif
-			transport[UDPTransportId].initialised = true;				//Mark as initialised
-			transport[UDPTransportId].defaultTick = maximumTickTime/10;	//Set default tick timer
-		}
+	udp = new WiFiUDP;
+	if(udp->beginMulticast(WiFi.localIP(),udpMulticastAddress, udpPort))
+	{
+		#if defined(TREACLE_DEBUG)
+			debugPrintln(treacleDebugString_OK);
+		#endif
+		transport[UDPTransportId].initialised = true;				//Mark as initialised
 	#elif defined(ESP32)
-		udp = new AsyncUDP;
-		if(udp->listenMulticast(udpMulticastAddress, udpPort))
-		{
-			udp->onPacket(
-				[](AsyncUDPPacket receivedMessage)
+	udp = new AsyncUDP;
+	if(udp->listenMulticast(udpMulticastAddress, udpPort))
+	{
+		udp->onPacket(
+			[](AsyncUDPPacket receivedMessage)
+			{
+				#if defined(TREACLE_DEBUG)
+					/*
+					treacle.debugPrint("UDP Packet Type: ");
+					treacle.debugPrint(receivedMessage.isBroadcast()?"Broadcast":receivedMessage.isMulticast()?"Multicast":"Unicast");
+					treacle.debugPrint(", From: ");
+					treacle.debugPrint(receivedMessage.remoteIP());
+					treacle.debugPrint(":");
+					treacle.debugPrint(receivedMessage.remotePort());
+					treacle.debugPrint(", To: ");
+					treacle.debugPrint(receivedMessage.localIP());
+					treacle.debugPrint(":");
+					treacle.debugPrint(receivedMessage.localPort());
+					treacle.debugPrint(", Length: ");
+					treacle.debugPrint(receivedMessage.length());
+					//Serial.print(", Data: ");
+					//Serial.write(receivedMessage.data(), receivedMessage.length());
+					treacle.debugPrintln();
+					*/
+				#endif
+				if(treacle.receiveBufferSize == 0 && receivedMessage.length() < treacle.maximumBufferSize)
 				{
-					#if defined(TREACLE_DEBUG)
-						/*
-						treacle.debugPrint("UDP Packet Type: ");
-						treacle.debugPrint(receivedMessage.isBroadcast()?"Broadcast":receivedMessage.isMulticast()?"Multicast":"Unicast");
-						treacle.debugPrint(", From: ");
-						treacle.debugPrint(receivedMessage.remoteIP());
-						treacle.debugPrint(":");
-						treacle.debugPrint(receivedMessage.remotePort());
-						treacle.debugPrint(", To: ");
-						treacle.debugPrint(receivedMessage.localIP());
-						treacle.debugPrint(":");
-						treacle.debugPrint(receivedMessage.localPort());
-						treacle.debugPrint(", Length: ");
-						treacle.debugPrint(receivedMessage.length());
-						//Serial.print(", Data: ");
-						//Serial.write(receivedMessage.data(), receivedMessage.length());
-						treacle.debugPrintln();
-						*/
-					#endif
-					if(treacle.receiveBufferSize == 0 && receivedMessage.length() < treacle.maximumBufferSize)
+					treacle.transport[treacle.UDPTransportId].rxPackets++;						//Count the packet as received
+					if(receivedMessage.data()[0] == (uint8_t)treacle.nodeId::allNodes ||
+						receivedMessage.data()[0] == treacle.currentNodeId)						//Packet is meaningful to this node
 					{
-						treacle.transport[treacle.UDPTransportId].rxPackets++;						//Count the packet as received
-						if(receivedMessage.data()[0] == (uint8_t)treacle.nodeId::allNodes ||
-							receivedMessage.data()[0] == treacle.currentNodeId)						//Packet is meaningful to this node
-						{
-							memcpy(treacle.receiveBuffer, receivedMessage.data(), receivedMessage.length());	//Copy the UDP payload into the receive buffer
-							treacle.receiveBufferSize = receivedMessage.length();								//Record the amount of payload
-							treacle.receiveBufferCrcChecked = false;											//Mark the payload as unchecked
-							treacle.receiveTransport = treacle.UDPTransportId;									//Record that it was received by UDP
-							treacle.transport[treacle.UDPTransportId].rxPacketsProcessed++;						//Count the packet as processed
-						}
-						return;
+						memcpy(treacle.receiveBuffer, receivedMessage.data(), receivedMessage.length());	//Copy the UDP payload into the receive buffer
+						treacle.receiveBufferSize = receivedMessage.length();								//Record the amount of payload
+						treacle.receiveBufferCrcChecked = false;											//Mark the payload as unchecked
+						treacle.receiveTransport = treacle.UDPTransportId;									//Record that it was received by UDP
+						treacle.transport[treacle.UDPTransportId].rxPacketsProcessed++;						//Count the packet as processed
 					}
 					else
 					{
-						treacle.transport[treacle.UDPTransportId].rxPacketsDropped++;					//Count the drop
+						treacle.transport[treacle.UDPTransportId].rxPacketsIgnored++;				//Count the ignore
 					}
-				});
-			#if defined(TREACLE_DEBUG)
-				debugPrintln(treacleDebugString_OK);
-			#endif
-			transport[UDPTransportId].initialised = true;				//Mark as initialised
-			transport[UDPTransportId].defaultTick = maximumTickTime/10;	//Set default tick timer
-		}
+					return;
+				}
+				else
+				{
+					treacle.transport[treacle.UDPTransportId].rxPacketsDropped++;					//Count the drop
+				}
+			});
+		#if defined(TREACLE_DEBUG)
+			debugPrintln(treacleDebugString_OK);
+		#endif
+		transport[UDPTransportId].initialised = true;				//Mark as initialised
 	#elif defined(AVR)
-		udp = new EthernetUDP;
-		if(udp->beginMulticast(udpMulticastAddress, udpPort))
-		{
-			#if defined(TREACLE_DEBUG)
-				debugPrintln(treacleDebugString_OK);
-			#endif
-			transport[UDPTransportId].initialised = true;				//Mark as initialised
-			transport[UDPTransportId].defaultTick = maximumTickTime/10;	//Set default tick timer
-		}
+	udp = new EthernetUDP;
+	if(udp->beginMulticast(udpMulticastAddress, udpPort))
+	{
+		#if defined(TREACLE_DEBUG)
+			debugPrintln(treacleDebugString_OK);
+		#endif
+		transport[UDPTransportId].initialised = true;				//Mark as initialised
 	#endif
+	}
 	else
 	{
 		#if defined(TREACLE_DEBUG)
 			debugPrintln(treacleDebugString_failed);
 		#endif
 		transport[UDPTransportId].initialised = false;				//Mark as not initialised
+	}
+	if(transport[UDPTransportId].initialised == true)
+	{
+		transport[UDPTransportId].defaultTick = maximumTickTime/10;	//Set default tick timer
+		transport[UDPTransportId].minimumTick = maximumTickTime/100;//Set minimum tick timer
 	}
 	return transport[UDPTransportId].initialised;
 }
@@ -261,6 +265,7 @@ uint32_t treacleClass::getUDPDutyCycleExceptions()
 void treacleClass::setUDPTickInterval(uint16_t tick)
 {
 	transport[UDPTransportId].defaultTick = tick;
+	transport[UDPTransportId].minimumTick = tick/10;
 }
 uint16_t treacleClass::getUDPTickInterval()
 {
