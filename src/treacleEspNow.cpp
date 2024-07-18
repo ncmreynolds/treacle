@@ -156,6 +156,7 @@ bool treacleClass::initialiseWiFi()								//Checks to see the state of the WiFi
 		#if defined(TREACLE_DEBUG)
 			debugPrint(treacleDebugString_Client);
 		#endif
+		return true;
 	}
 	else if(WiFi.getMode() == WIFI_AP)
 	{
@@ -175,6 +176,7 @@ bool treacleClass::initialiseWiFi()								//Checks to see the state of the WiFi
 		#if defined(TREACLE_DEBUG)
 			debugPrint(treacleDebugString_ClientAndAP);
 		#endif
+		return true;
 	}
 	#if defined(ESP8266)
 	else if(WiFi.getMode() == WIFI_OFF)
