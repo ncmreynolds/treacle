@@ -411,6 +411,7 @@ class treacleClass	{
 		uint8_t maximumNumberOfNodes = 8;				//Expected max number of nodes
 		static const uint8_t absoluteMaximumNumberOfNodes = 80;	//Absolute max number of nodes
 		uint8_t numberOfNodes = 0;
+		uint8_t numberOfReachableNodes = 0;
 		struct nodeInfo
 		{
 			uint8_t id = 0;
@@ -436,6 +437,7 @@ class treacleClass	{
 		static const uint8_t minimumNodeId = 1;			//Lowest a node ID can be
 		static const uint8_t maximumNodeId = 126;		//Highest a node ID can be
 		bool selectNodeId();							//Select a node ID for this node
+		void calculateNumberOfReachableNodes();			//Track how many nodes are currently reachable
 		
 		//Duty cycle monitoring
 		void calculateDutyCycle(uint8_t);				//Calculate the duty cycle for a specific transport based off current txTime, done just before sending
