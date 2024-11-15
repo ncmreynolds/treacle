@@ -788,25 +788,25 @@ void treacleClass::buildPacketHeader(uint8_t transportId, uint8_t recipient, pay
 }
 void treacleClass::buildKeepalivePacket(uint8_t transportId)
 {
-	buildPacketHeader(transportId, (uint8_t)nodeId::allNodes, payloadType::keepalive);						//Set payloadType
-	for(uint8_t nodeIndex = 0; nodeIndex < numberOfNodes; nodeIndex++)									//Add all nodes with a known name
+	buildPacketHeader(transportId, (uint8_t)nodeId::allNodes, payloadType::keepalive);											//Set payloadType
+	for(uint8_t nodeIndex = 0; nodeIndex < numberOfNodes; nodeIndex++)															//Add all nodes with a known name
 	{
-		if(node[nodeIndex].name != nullptr && node[nodeIndex].rxReliability > 0)					//Include nodes with names that have non-zero receive history
+		if(node[nodeIndex].name != nullptr && node[nodeIndex].rxReliability[transportId] > 0)									//Include nodes with names that have non-zero receive history
 		{
-			transport[transportId].transmitBuffer[transport[transportId].transmitPacketSize++] = node[nodeIndex].id;							//Include node ID
-			transport[transportId].transmitBuffer[transport[transportId].transmitPacketSize++] =											//Include node RX reliability MSB
+			transport[transportId].transmitBuffer[transport[transportId].transmitPacketSize++] = node[nodeIndex].id;			//Include node ID
+			transport[transportId].transmitBuffer[transport[transportId].transmitPacketSize++] =								//Include node RX reliability MSB
 				(uint8_t)((node[nodeIndex].rxReliability[transportId]&0xff00)>>8);
-			transport[transportId].transmitBuffer[transport[transportId].transmitPacketSize++] =											//Include node RX reliability LSB
+			transport[transportId].transmitBuffer[transport[transportId].transmitPacketSize++] =								//Include node RX reliability LSB
 				(uint8_t)(node[nodeIndex].rxReliability[transportId]&0x00ff);
 			
 		}
 	}
-	transport[transportId].transmitBuffer[(uint8_t)headerPosition::packetLength] = transport[transportId].transmitPacketSize;				//Update packetLength field
-	processPacketBeforeTransmission(transportId);																							//Do CRC and encryption if needed
+	transport[transportId].transmitBuffer[(uint8_t)headerPosition::packetLength] = transport[transportId].transmitPacketSize;	//Update packetLength field
+	processPacketBeforeTransmission(transportId);																				//Do CRC and encryption if needed
 }
-void treacleClass::buildIdResolutionRequestPacket(uint8_t transportId, char* name)				//Ask for a ID from a name
+void treacleClass::buildIdResolutionRequestPacket(uint8_t transportId, char* name)												//Ask for a ID from a name
 {
-	buildPacketHeader(transportId, (uint8_t)nodeId::allNodes, payloadType::idResolutionRequest);			//Set payloadType
+	buildPacketHeader(transportId, (uint8_t)nodeId::allNodes, payloadType::idResolutionRequest);								//Set payloadType
 	transport[transportId].transmitBuffer[transport[transportId].transmitPacketSize++] = strlen(name);
 	memcpy(&transport[transportId].transmitBuffer[transport[transportId].transmitPacketSize], name, strlen(name));
 	transport[transportId].transmitPacketSize += strlen(name);
