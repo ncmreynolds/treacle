@@ -385,9 +385,16 @@ bool treacleClass::initialiseEspNow()
 					}
 				}
 				#elif defined(ESP32)
+				#if ESP_IDF_VERSION_MAJOR >= 5
+				if(esp_now_register_recv_cb(
+					[](const esp_now_recv_info *rcvinfo, const uint8_t *receivedMessage, int receivedMessageLength)
+					{
+						uint8_t *macAddress = rcvinfo->src_addr;
+				#elif ESP_IDF_VERSION_MAJOR > 3
 				if(esp_now_register_recv_cb(	//ESP-Now receive callback
 					[](const uint8_t *macAddress, const uint8_t *receivedMessage, int receivedMessageLength)
 					{
+				#endif
 						if(treacle.currentState != treacle.state::starting)	//Must not receive packets before the buffers are allocated
 						{
 							if(treacle.receiveBufferSize == 0 && receivedMessageLength < treacle.maximumBufferSize)	//Check the receive buffer is empty first
@@ -415,8 +422,13 @@ bool treacleClass::initialiseEspNow()
 					}
 				) == ESP_OK)
 				{
+					#if ESP_IDF_VERSION_MAJOR >= 5
 					if(esp_now_register_send_cb(															//ESP-Now send callback
 						[](const uint8_t* macAddress, esp_now_send_status_t status)							//ESP-Now send callback is used to measure airtime for duty cycle calculations
+					#elif ESP_IDF_VERSION_MAJOR > 3
+					if(esp_now_register_send_cb(															//ESP-Now send callback
+						[](const uint8_t* macAddress, esp_now_send_status_t status)							//ESP-Now send callback is used to measure airtime for duty cycle calculations
+					#endif
 						{
 							if(status == ESP_OK)
 							{
