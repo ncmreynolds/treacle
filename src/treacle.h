@@ -342,6 +342,7 @@ class treacleClass	{
 		uint16_t txReliability(uint8_t);
 		//General
 		void setNodeName(char* name);						//Set the node name
+		char* getNodeName();								//Get the node name
 		void setNodeId(uint8_t id);							//Set the nodeId
 		uint8_t getNodeId();								//Get the nodeId, which may have been autonegotiated
 		bool begin(uint8_t maxNodes = 8);					//Start treacle, optionally specify a max number of nodes

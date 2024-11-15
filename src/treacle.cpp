@@ -37,6 +37,10 @@ void treacleClass::setNodeName(char* name)
 		#endif
 	}
 }
+char* treacleClass::getNodeName()
+{
+	return currentNodeName;
+}
 void treacleClass::setNodeId(uint8_t id)
 {
 	if(id >= minimumNodeId && id <= maximumNodeId)
