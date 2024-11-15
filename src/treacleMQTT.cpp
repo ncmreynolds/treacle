@@ -17,7 +17,24 @@
 #if defined(TREACLE_SUPPORT_MQTT)
 void treacleClass::setMQTTserver(String server)
 {
-	setMQTTserver(server.c_str());
+	//setMQTTserver(server.c_str());
+	if(server.length() > 0)
+	{
+		if(MQTTserver != nullptr)
+		{
+			delete MQTTserver;
+		}
+		MQTTserver = new char[server.length() + 1];
+		server.toCharArray(MQTTserver, server.length() + 1);
+		//strlcpy(MQTTserver, server, strlen(server) + 1);
+		#if defined(TREACLE_DEBUG)
+			debugPrint(treacleDebugString_treacleSpace);
+			debugPrint(treacleDebugString_MQTTspace);
+			debugPrint(treacleDebugString_server);
+			debugPrint(':');
+			debugPrintStringln(MQTTserver);
+		#endif
+	}
 }
 void treacleClass::setMQTTserver(char* server)
 {
