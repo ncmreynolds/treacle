@@ -219,8 +219,9 @@ class treacleClass	{
 			void disableEspNowEncryption();					//Disable encryption for ESP-Now
 			bool espNowInitialised();						//Is ESP-Now radio correctly initialised?
 			void setEspNowChannel(uint8_t);					//Set the WiFi channel used for ESP-Now
-			void setEspNowTickInterval(uint16_t tick);		//Set the ESP-Now tick interval
+			bool espNowChannelChanged();					//Check if the ESP-Now channel changed, resets on read if true
 			uint8_t getEspNowChannel();						//Get the WiFi channel used for ESP-Now
+			void setEspNowTickInterval(uint16_t tick);		//Set the ESP-Now tick interval
 			uint32_t getEspNowRxPackets();					//Get packet stats
 			uint32_t getEspNowTxPackets();					//Get packet stats
 			uint32_t getEspNowRxPacketsDropped();			//Get packet stats
@@ -319,6 +320,9 @@ class treacleClass	{
 		void goOffline();									//Actively go offline
 		void goOnline();									//Actively go online (if possible and this will take a few seconds)
 		uint8_t nodes();									//Number of nodes
+		bool nodesChanged();								//Inform application if number of nodes has changed, resets on read if true
+		uint8_t reachableNodes();							//Number of reachable nodes
+		bool reachableNodesChanged();						//Inform application if number of reachable nodes has changed, resets on read if true
 		uint8_t maxPayloadSize();							//Maximum single packet payload size
 		uint32_t messageWaiting();							//Is there a message waiting?
 		void clearWaitingMessage();							//Trash an incoming message
@@ -344,6 +348,7 @@ class treacleClass	{
 		void setNodeName(char* name);						//Set the node name
 		char* getNodeName();								//Get the node name
 		void setNodeId(uint8_t id);							//Set the nodeId
+		bool nodeIdChanged();								//Find out if the node name changed, resets on read if true
 		uint8_t getNodeId();								//Get the nodeId, which may have been autonegotiated
 		bool begin(uint8_t maxNodes = 8);					//Start treacle, optionally specify a max number of nodes
 		void end();											//Stop treacle
@@ -411,8 +416,10 @@ class treacleClass	{
 		//Node information
 		uint8_t maximumNumberOfNodes = 8;					//Expected max number of nodes
 		static const uint8_t absoluteMaximumNumberOfNodes = 80;	//Absolute max number of nodes
-		uint8_t numberOfNodes = 0;
-		uint8_t numberOfReachableNodes = 0;
+		uint8_t numberOfNodes = 0;							//Track number of nodes
+		bool numberOfNodesChanged = false;					//Flag to show application if nodes have changed, resets on read if true
+		uint8_t numberOfReachableNodes = 0;					//Track number of reachable nodes
+		bool numberOfReachableNodesChanged = false;			//Flag to show application if nodes have changed, resets on read if true
 		struct nodeInfo
 		{
 			uint8_t id = 0;
@@ -434,6 +441,7 @@ class treacleClass	{
 		
 		//Node ID management
 		char* currentNodeName = nullptr;					//Everything has a name, don't use numerical addresses
+		bool currentNodeIdChanged = false;					//Flag to show application if node ID has changed
 		uint8_t currentNodeId = 0;							//Current node ID, 0 implies not set
 		static const uint8_t minimumNodeId = 1;				//Lowest a node ID can be
 		static const uint8_t maximumNodeId = 126;			//Highest a node ID can be
@@ -552,6 +560,7 @@ class treacleClass	{
 			0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 			uint8_t preferredespNowChannel = 1;				//It may not be possible to switch to the preferred channel if it is a WiFi client
 			uint8_t currentEspNowChannel = 0;				//Track this, as it's not fixed if the device is a WiFi client
+			bool currentEspNowChannelChanged = true;		//Flag to inform the application if the channel changes
 			//ESP-Now specific functions
 			bool initialiseWiFi();							//Initialise WiFi and return result. Only changes things if WiFi is not already set up when treacle begins
 			bool changeWiFiChannel(uint8_t channel);		//Change the WiFi channel

@@ -45,8 +45,18 @@ void treacleClass::setNodeId(uint8_t id)
 {
 	if(id >= minimumNodeId && id <= maximumNodeId)
 	{
-		currentNodeId = id;
+		currentNodeId = id;													//Set the node ID
+		currentNodeIdChanged = true;										//Set a flag to inform the application
 	}
+}
+bool treacleClass::nodeIdChanged()
+{
+	if(currentNodeIdChanged == true)
+	{
+		currentNodeIdChanged = false;
+		return true;
+	}
+	return false;
 }
 uint8_t treacleClass::getNodeId()
 {
@@ -231,12 +241,6 @@ void treacleClass::enableDebug(Stream &debugStream)
 {
 	#if defined(TREACLE_DEBUG)
 		debug_uart_ = &debugStream;				//Set the stream used for debug
-		#if defined(ESP8266)
-			if(&debugStream == &Serial)
-			{
-				  debug_uart_->write(17);			//Send an XON to stop the hung terminal after reset on ESP8266, which often emits an XOFF
-			}
-		#endif
 	#endif
 }
 void treacleClass::disableDebug()
@@ -341,11 +345,12 @@ bool treacleClass::selectNodeId()
 		currentNodeId = random(minimumNodeId,maximumNodeId);
 		idIsUnique = (nodeExists(currentNodeId) == false);
 	}
-	if(idIsUnique == true)
+	if(idIsUnique == true)													//A potentially unique node ID has been chosen
 	{
 		#if defined(TREACLE_DEBUG)
 			debugPrintln(currentNodeId);
 		#endif
+		currentNodeIdChanged = true;										//Set a flag to inform the application
 		return true;
 	}
 	#if defined(TREACLE_DEBUG)
@@ -573,6 +578,15 @@ void treacleClass::changeCurrentState(state newState)
 			debugPrintln(treacleDebugString_minutes);
 		#endif
 		currentState = newState;
+		if(currentState == state::online)
+		{
+			calculateNumberOfReachableNodes();
+		}
+		else if(currentState == state::offline)
+		{
+			numberOfReachableNodes = 0;
+			numberOfReachableNodesChanged = false;
+		}
 		lastStateChange = millis();
 	}
 }
@@ -723,6 +737,7 @@ void treacleClass::timeOutTicks()
 {
 	uint16_t totalTxReliability = 0x0000;
 	uint16_t totalRxReliability = 0x0000;
+	bool reliabilityWorsened = false;
 	for(uint8_t transportId = 0; transportId < numberOfActiveTransports; transportId++)
 	{
 		for(uint8_t nodeIndex = 0; nodeIndex < numberOfNodes; nodeIndex++)
@@ -733,7 +748,8 @@ void treacleClass::timeOutTicks()
 			{
 				node[nodeIndex].rxReliability[transportId] = node[nodeIndex].rxReliability[transportId] >> 1;	//Reduce rxReliability
 				node[nodeIndex].txReliability[transportId] = node[nodeIndex].txReliability[transportId] >> 1;	//As we've not heard anything to the contrary also reduce txReliability
-				node[nodeIndex].lastTick[transportId] = millis();										//Update last tick timer, even though one was missed
+				node[nodeIndex].lastTick[transportId] = millis();												//Update last tick timer, even though one was missed
+				reliabilityWorsened = true;
 				#if defined(TREACLE_DEBUG)
 					debugPrint(treacleDebugString_treacleSpace);
 					debugPrintTransportName(transportId);
@@ -761,6 +777,10 @@ void treacleClass::timeOutTicks()
 	else if((countBits(totalRxReliability) > 2 && countBits(totalTxReliability) > 2) && (currentState == state::selectedId || currentState == state::offline))
 	{
 		changeCurrentState(state::online);
+	}
+	else if(reliabilityWorsened)
+	{
+		calculateNumberOfReachableNodes();
 	}
 }
 
@@ -1095,6 +1115,7 @@ void treacleClass::unpackKeepalivePacket(uint8_t transportId, uint8_t senderId)
 			}
 			bufferIndex+=2;	//Skip to next node ID in keepalive (the loop already does bufferIndex++)
 		}
+		calculateNumberOfReachableNodes();
 	}
 	else
 	{
@@ -1224,7 +1245,8 @@ void treacleClass::unpackIdAndNameResolutionResponsePacket(uint8_t transportId, 
 					debugPrint(' ');
 					debugPrintln(treacleDebugString_this_node);
 				#endif
-				currentNodeId = receiveBuffer[(uint8_t)headerPosition::payload];	//Use the ID
+				currentNodeId = receiveBuffer[(uint8_t)headerPosition::payload];	//Use the ID for this node
+				currentNodeIdChanged = true;										//Set a flag to inform the application
 				changeCurrentState(state::selectedId);
 			}
 		}
@@ -1330,13 +1352,14 @@ bool treacleClass::addNode(uint8_t id, uint16_t reliability)
 		node[numberOfNodes].lastPayloadNumber = new uint8_t[numberOfActiveTransports];	//This is per transport
 		for(uint8_t transportIndex = 0; transportIndex < numberOfActiveTransports; transportIndex++)
 		{
-			node[numberOfNodes].lastTick[transportIndex] = millis();						//Count the addition of the node as a 'tick'
-			node[numberOfNodes].nextTick[transportIndex] = maximumTickTime;					//Don't time it out until it's genuinely missed a 'tick'
+			node[numberOfNodes].lastTick[transportIndex] = millis();					//Count the addition of the node as a 'tick'
+			node[numberOfNodes].nextTick[transportIndex] = maximumTickTime;				//Don't time it out until it's genuinely missed a 'tick'
 			node[numberOfNodes].rxReliability[transportIndex] = reliability;
 			node[numberOfNodes].txReliability[transportIndex] = reliability;
-			node[numberOfNodes].lastPayloadNumber[transportIndex] = 0;						//Cannot make any assumptions about payload number
+			node[numberOfNodes].lastPayloadNumber[transportIndex] = 0;					//Cannot make any assumptions about payload number
 		}
 		numberOfNodes++;
+		numberOfNodesChanged = true;													//Inform the application
 		return true;
 	}
 	return false;
@@ -1439,31 +1462,39 @@ uint16_t treacleClass::txReliability(uint8_t id)
 				reliability = node[nodeIndex].txReliability[index];
 			}
 		}
-		/*
-		if(espNowInitialised() == true)
-		{
-			if(loRaInitialised() == true)
-			{
-				return max(node[nodeIndex].txReliability[espNowTransportId], node[nodeIndex].txReliability[loRaTransportId]);
-			}
-			return node[nodeIndex].txReliability[espNowTransportId];
-		}
-		else if(loRaInitialised() == true)
-		{
-			return node[nodeIndex].txReliability[loRaTransportId];
-		}
-		*/
 	}
 	return reliability;
 }
 /*
  *
- *	Messaging functions
+ *	Status functions
  *
- */ 
+ */
 uint8_t treacleClass::nodes()
 {
 	return numberOfNodes;
+}
+bool treacleClass::nodesChanged()
+{
+	if(numberOfNodesChanged == true)
+	{
+		numberOfNodesChanged = false;
+		return true;
+	}
+	return false;
+}
+uint8_t treacleClass::reachableNodes()
+{
+	return numberOfReachableNodes;
+}
+bool treacleClass::reachableNodesChanged()
+{
+	if(numberOfReachableNodesChanged == true)
+	{
+		numberOfReachableNodesChanged = false;
+		return true;
+	}
+	return false;
 }
 bool treacleClass::online()
 {
@@ -1475,6 +1506,11 @@ void goOffline()
 void goOnline()
 {
 }
+/*
+ *
+ *	Messaging functions
+ *
+ */ 
 bool treacleClass::packetReceived()
 {
 	return receiveBufferSize != 0;	//Check the buffer payload
@@ -1539,7 +1575,7 @@ uint32_t treacleClass::messageWaiting()
 	{
 		return 0;						//A tick has been sent, so the application can wait until next time for any data
 	}
-	timeOutTicks();					//Potentially time out ticks from other nodes if they are not responding or the application is slow calling this
+	timeOutTicks();						//Potentially time out ticks from other nodes if they are not responding or the application is slow calling this
 	if(currentState == state::selectingId)
 	{
 		if(applicationDataPacketReceived())
@@ -1580,6 +1616,7 @@ void treacleClass::clearWaitingMessage()
 }
 void treacleClass::calculateNumberOfReachableNodes()
 {
+	uint8_t startingNumber = numberOfReachableNodes;
 	bool nodeReachable[numberOfNodes] = {};	//Used to track which nodes _can_ have be reached, in transport priority order
 	numberOfReachableNodes = 0;
 	//Iterate ALL options to get the total reachable nodes
@@ -1600,11 +1637,14 @@ void treacleClass::calculateNumberOfReachableNodes()
 			}
 		}
 	}
+	if(numberOfReachableNodes != startingNumber)
+	{
+		numberOfReachableNodesChanged = true;													//Inform the application
+	}
 }
 
 uint32_t treacleClass::suggestedQueueInterval()
 {
-	calculateNumberOfReachableNodes();
 	uint8_t numberOfNodesReached = 0;
 	if(numberOfActiveTransports > 1)
 	{

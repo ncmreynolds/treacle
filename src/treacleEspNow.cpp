@@ -53,6 +53,15 @@ void treacleClass::setEspNowChannel(uint8_t channel)
 {
 	preferredespNowChannel = channel;							//Sets the preferred channel. It will only be used if practical.
 }
+bool treacleClass::espNowChannelChanged()
+{
+	if(currentEspNowChannelChanged == true)
+	{
+		currentEspNowChannelChanged = false;
+		return true;
+	}
+	return false;
+}
 uint8_t treacleClass::getEspNowChannel()
 {
 	return currentEspNowChannel;								//Gets the current channel
@@ -547,12 +556,14 @@ bool treacleClass::sendBufferByEspNow(uint8_t* buffer, uint8_t packetSize)
 	}
 	else
 	{
-		transport[espNowTransportId].txPacketsDropped++;		//Record the drop
+		transport[espNowTransportId].txPacketsDropped++;	//Record the drop
 		if(WiFi.channel() != currentEspNowChannel)			//Channel has changed, alter the peer address
 		{
+			currentEspNowChannel = WiFi.channel();			//Update the expected channel
+			currentEspNowChannelChanged = true;				//Set the flag to inform the application
 			if(deleteEspNowPeer(broadcastMacAddress))		//This could perhaps be changed to modify the existing peer but this should be infrequent
 			{
-				addEspNowPeer(broadcastMacAddress);
+				addEspNowPeer(broadcastMacAddress);			//Add the peer back for future sends
 			}
 		}
 	}
