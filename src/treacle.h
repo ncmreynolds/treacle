@@ -353,10 +353,22 @@ class treacleClass	{
 		bool nodeIdChanged();								//Find out if the node name changed, resets on read if true
 		uint8_t getNodeId();								//Get the nodeId, which may have been autonegotiated
 		uint8_t getNodeId(uint8_t index);					//Get the nodeId of another node based on index
+		//Transport stats
+		uint8_t numberOfTransports();						//Return number of transports
+		const char* transportName(uint8_t index);			//Printable transport name
+		uint32_t getRxPackets(uint8_t index);				//Get packet stats
+		uint32_t getTxPackets(uint8_t index);				//Get packet stats
+		uint32_t getRxPacketsProcessed(uint8_t index);		//Get packet stats
+		uint32_t getRxPacketsDropped(uint8_t index);		//Get packet stats
+		uint32_t getTxPacketsDropped(uint8_t index);		//Get packet stats
+		float getDutyCycle(uint8_t index);					//Get packet stats
+		float getMaxDutyCycle(uint8_t index);				//Get packet stats
+		//Start, stop and debug
 		bool begin(uint8_t maxNodes = 8);					//Start treacle, optionally specify a max number of nodes
 		void end();											//Stop treacle
 		void enableDebug(Stream &);							//Start debugging on a stream
 		void disableDebug();								//Stop debugging
+		bool debugEnabled();								//Check if debug is enabled
 	protected:
 	private:
 		//State machine

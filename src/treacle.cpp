@@ -48,7 +48,7 @@ char* treacleClass::getNodeNameFromId(uint8_t id)
 }
 char* treacleClass::getNodeNameFromIndex(uint8_t index)
 {
-	if(index < index)
+	if(index < numberOfNodes)
 	{
 		if(node[index].name != nullptr)
 		{
@@ -83,6 +83,85 @@ uint8_t treacleClass::getNodeId(uint8_t index)
 	if(index < numberOfNodes)
 	{
 		return node[index].id;
+	}
+	return 0;
+}
+uint8_t treacleClass::numberOfTransports()
+{
+	return numberOfActiveTransports;
+}
+const char* treacleClass::transportName(uint8_t index)
+{
+	#if defined(TREACLE_SUPPORT_ESPNOW)
+		if(index == espNowTransportId){return treacleDebugString_ESPNow;}
+	#endif
+	#if defined(TREACLE_SUPPORT_LORA)
+		if(index == loRaTransportId){return treacleDebugString_LoRa;}
+	#endif
+	#if defined(TREACLE_SUPPORT_MQTT)
+		if(index == MQTTTransportId){return treacleDebugString_MQTT;}
+	#endif
+	#if defined(TREACLE_SUPPORT_UDP)
+		if(index == UDPTransportId){return treacleDebugString_UDP;}
+	#endif
+	#if defined(TREACLE_SUPPORT_COBS)
+		if(index == cobsTransportId){return treacleDebugString_COBS;}
+	#endif
+	return nullptr;
+}
+uint32_t treacleClass::getRxPackets(uint8_t index)
+{
+	if(index < numberOfActiveTransports)
+	{
+		return transport[index].rxPackets;
+	}
+	return 0;
+}
+uint32_t treacleClass::getTxPackets(uint8_t index)
+{
+	if(index < numberOfActiveTransports)
+	{
+		return transport[index].txPackets;
+	}
+	return 0;
+}
+uint32_t treacleClass::getRxPacketsProcessed(uint8_t index)
+{
+	if(index < numberOfActiveTransports)
+	{
+		return transport[index].rxPacketsProcessed;
+	}
+	return 0;
+}
+uint32_t treacleClass::getRxPacketsDropped(uint8_t index)
+{
+	if(index < numberOfActiveTransports)
+	{
+		return transport[index].rxPacketsDropped;
+	}
+	return 0;
+}
+uint32_t treacleClass::getTxPacketsDropped(uint8_t index)
+{
+	if(index < numberOfActiveTransports)
+	{
+		return transport[index].txPacketsDropped;
+	}
+	return 0;
+}
+float treacleClass::getDutyCycle(uint8_t index)
+{
+	if(index < numberOfActiveTransports)
+	{
+		return transport[index].calculatedDutyCycle;
+	}
+	return 0;
+}
+float treacleClass::getMaxDutyCycle(uint8_t index)
+{
+	if(index < numberOfActiveTransports)
+	{
+		return transport[index].maximumDutyCycle;
 	}
 	return 0;
 }
@@ -271,6 +350,12 @@ void treacleClass::disableDebug()
 {
 	#if defined(TREACLE_DEBUG)
 		debug_uart_ = nullptr;
+	#endif
+}
+bool treacleClass::debugEnabled()
+{
+	#if defined(TREACLE_DEBUG)
+		return debug_uart_ != nullptr;			//Check if debug enabled (for application)
 	#endif
 }
 /*
