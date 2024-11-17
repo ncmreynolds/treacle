@@ -163,7 +163,7 @@ bool treacleClass::initialiseWiFi()								//Checks to see the state of the WiFi
 	if(WiFi.getMode() == WIFI_STA)
 	{
 		#if defined(TREACLE_DEBUG)
-			debugPrint(treacleDebugString_Client);
+			debugPrintln(treacleDebugString_Client);
 		#endif
 		return true;
 	}
@@ -281,6 +281,7 @@ bool treacleClass::changeWiFiChannel(uint8_t channel)
 				#if defined(TREACLE_DEBUG)
 					debugPrintln(F("\n\rUnable to set country to JP for channel 14 use"));
 				#endif
+				currentEspNowChannel = WiFi.channel();
 				return false;
 			}
 		#elif defined ESP32
@@ -300,9 +301,11 @@ bool treacleClass::changeWiFiChannel(uint8_t channel)
 				debugPrint(':');
 				debugPrintln(WiFi.channel());
 			#endif
+			currentEspNowChannel = WiFi.channel();
 			return true;
 		}
 	#endif
+	currentEspNowChannel = WiFi.channel();
 	return false;
 }
 #if defined(ESP8266)
@@ -363,12 +366,6 @@ bool treacleClass::initialiseEspNow()
 {
 	if(initialiseWiFi())
 	{
-		#if defined(TREACLE_DEBUG)
-			debugPrint(treacleDebugString_treacleSpace);
-			debugPrint(treacleDebugString_initialisingSpace);
-			debugPrint(treacleDebugString_ESPNow);
-			debugPrint(':');
-		#endif
 		if(WiFi.getMode() == WIFI_AP)
 		{
 			if(WiFi.channel() != preferredespNowChannel)
@@ -376,7 +373,18 @@ bool treacleClass::initialiseEspNow()
 				changeWiFiChannel(preferredespNowChannel);
 			}
 		}
-		currentEspNowChannel = WiFi.channel();
+		else
+		{
+			currentEspNowChannel = WiFi.channel();
+			#if defined(TREACLE_DEBUG)
+				debugPrint(treacleDebugString_treacleSpace);
+				debugPrint(treacleDebugString_WiFi);
+				debugPrint(' ');
+				debugPrint(treacleDebugString_channel);
+				debugPrint(':');
+				debugPrintln(currentEspNowChannel);
+			#endif
+		}
 		if(esp_now_init() == ESP_OK)
 		{
 			if(addEspNowPeer(broadcastMacAddress))
@@ -457,30 +465,63 @@ bool treacleClass::initialiseEspNow()
 					) == ESP_OK)
 					{
 						transport[espNowTransportId].initialised = true;
+					}
+					else
+					{
 						#if defined(TREACLE_DEBUG)
-							debugPrintln(treacleDebugString_OK);
+							debugPrint(treacleDebugString_treacleSpace);
+							debugPrint("esp_now_register_send_cb");
+							debugPrint(' ');
+							debugPrintln(treacleDebugString_failed);
 						#endif
 					}
+				}
+				else
+				{
+					#if defined(TREACLE_DEBUG)
+						debugPrint(treacleDebugString_treacleSpace);
+						debugPrint("esp_now_register_recv_cb");
+						debugPrint(' ');
+						debugPrintln(treacleDebugString_failed);
+					#endif
 				}
 				#endif
 			}
 		}
+		else
+		{
+			#if defined(TREACLE_DEBUG)
+				debugPrint("esp_now_init");
+				debugPrint(' ');
+				debugPrintln(treacleDebugString_failed);
+				debugPrint(' ');
+			#endif
+		}
+		#if defined(TREACLE_DEBUG)
+			debugPrint(treacleDebugString_treacleSpace);
+			debugPrint(treacleDebugString_initialisingSpace);
+			debugPrint(treacleDebugString_ESPNow);
+			debugPrint(':');
+		#endif
 		if(transport[espNowTransportId].initialised == true)
 		{
 			transport[espNowTransportId].defaultTick = maximumTickTime/10;
 			transport[espNowTransportId].minimumTick = maximumTickTime/100;
-			return true;
+			#if defined(TREACLE_DEBUG)
+				debugPrintln(treacleDebugString_OK);
+			#endif
+		}
+		else
+		{
+			#if defined(TREACLE_DEBUG)
+				debugPrintln(treacleDebugString_failed);
+			#endif
 		}
 	}
-	transport[espNowTransportId].initialised = false;
-	#if defined(TREACLE_DEBUG)
-		debugPrintln(treacleDebugString_failed);
-	#endif
 	return transport[espNowTransportId].initialised;
 }
 bool treacleClass::addEspNowPeer(uint8_t* macaddress)
 {
-	/*
 	#if defined(TREACLE_DEBUG)
 		debugPrint(treacleDebugString_treacleSpace);
 		debugPrint(treacleDebugString_addingSpace);
@@ -488,15 +529,15 @@ bool treacleClass::addEspNowPeer(uint8_t* macaddress)
 		debugPrint(treacleDebugString_peer);
 		debugPrint(':');
 	#endif
-	*/
 	#if defined(ESP8266)
-	if(esp_now_add_peer(macaddress, ESP_NOW_ROLE_COMBO, currentEspNowChannel, NULL, 0) == ESP_OK)
-	{
-		#if defined(TREACLE_DEBUG)
-			//debugPrintln(treacleDebugString_OK);
-		#endif
-		return true;
-	}
+		int8_t retval = esp_now_add_peer(macaddress, ESP_NOW_ROLE_COMBO, currentEspNowChannel, NULL, 0)
+		if(retval == ESP_OK)
+		{
+			#if defined(TREACLE_DEBUG)
+				debugPrintln(treacleDebugString_OK);
+			#endif
+			return true;
+		}
 	#elif defined(ESP32)
 	esp_now_peer_info_t newPeer;
 	newPeer.peer_addr[0] = macaddress[0];
@@ -515,20 +556,29 @@ bool treacleClass::addEspNowPeer(uint8_t* macaddress)
 	}
 	else	//WiFi not initialised
 	{
+		#if defined(TREACLE_DEBUG)
+			debugPrint(treacleDebugString_unknown);
+			debugPrint(' ');
+			debugPrint(treacleDebugString_WiFi);
+			debugPrintln(" mode");
+		#endif
 		return false;
 	}
 	newPeer.channel = currentEspNowChannel;
 	newPeer.encrypt = false;
-	if(esp_now_add_peer(&newPeer) == ESP_OK)
+	esp_err_t retval = esp_now_add_peer(&newPeer);
+	if(retval == ESP_OK)
 	{
 		#if defined(TREACLE_DEBUG)
-			//debugPrintln(treacleDebugString_OK);
+			debugPrintln(treacleDebugString_OK);
 		#endif
 		return true;
 	}
 	#endif
 	#if defined(TREACLE_DEBUG)
-		//debugPrintln(treacleDebugString_failed);
+		debugPrint(treacleDebugString_failed);
+		debugPrint(' ');
+		debugPrintln(int(retval), HEX);
 	#endif
 	return false;
 }
