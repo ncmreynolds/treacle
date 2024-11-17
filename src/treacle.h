@@ -339,11 +339,6 @@ class treacleClass	{
 		bool retrieveWaitingMessage(uint8_t*);				//Retrieve a message. The buffer must be large enough for it, no checking can be done
 		//Encryption
 		void setEncryptionKey(uint8_t* key);				//Set the encryption key
-		//Node status
-		bool online(uint8_t);								//Is a specific treacle node online? ie. has this node heard from it recently
-		uint32_t rxAge(uint8_t);
-		uint16_t rxReliability(uint8_t);
-		uint16_t txReliability(uint8_t);
 		//General
 		void setNodeName(char* name);						//Set the node name
 		char* getNodeName();								//Get the node name
@@ -356,13 +351,24 @@ class treacleClass	{
 		//Transport stats
 		uint8_t numberOfTransports();						//Return number of transports
 		const char* transportName(uint8_t index);			//Printable transport name
-		uint32_t getRxPackets(uint8_t index);				//Get packet stats
-		uint32_t getTxPackets(uint8_t index);				//Get packet stats
-		uint32_t getRxPacketsProcessed(uint8_t index);		//Get packet stats
-		uint32_t getRxPacketsDropped(uint8_t index);		//Get packet stats
-		uint32_t getTxPacketsDropped(uint8_t index);		//Get packet stats
-		float getDutyCycle(uint8_t index);					//Get packet stats
-		float getMaxDutyCycle(uint8_t index);				//Get packet stats
+		uint32_t getRxPackets(uint8_t index);				//Get transport stats
+		uint32_t getTxPackets(uint8_t index);				//Get transport stats
+		uint32_t getRxPacketsProcessed(uint8_t index);		//Get transport stats
+		uint32_t getRxPacketsDropped(uint8_t index);		//Get transport stats
+		uint32_t getTxPacketsDropped(uint8_t index);		//Get transport stats
+		float getDutyCycle(uint8_t index);					//Get transport stats
+		float getMaxDutyCycle(uint8_t index);				//Get transport stats
+		//Node status & stats
+		bool online(uint8_t);								//Is a specific treacle node online? ie. has this node heard from it recently
+		//uint32_t rxAge(uint8_t);
+		uint16_t nodeRxReliability(uint8_t index);							//Get node stats
+		uint16_t nodeTxReliability(uint8_t index);							//Get node stats
+		uint32_t nodeLastSeen(uint8_t index);								//Get node stats
+		uint32_t nodeLastTick(uint8_t index, uint8_t transport);			//Get node stats
+		uint16_t nodeNextTick(uint8_t index, uint8_t transport);			//Get node stats
+		uint16_t nodeTxReliability(uint8_t index, uint8_t transport);		//Get node stats
+		uint16_t nodeRxReliability(uint8_t index, uint8_t transport);		//Get node stats
+		uint8_t  nodeLastPayloadNumber(uint8_t index, uint8_t transport);	//Get node stats
 		//Start, stop and debug
 		bool begin(uint8_t maxNodes = 8);					//Start treacle, optionally specify a max number of nodes
 		void end();											//Stop treacle
@@ -697,6 +703,30 @@ class treacleClass	{
 				if(debug_uart_ != nullptr)
 				{
 					debug_uart_->println(thingToPrint);
+				}
+			}
+			template <class T>
+			void debugPrint(T thingToPrint, int base)
+			{
+				if(debug_uart_ != nullptr)
+				{
+					if(base == HEX)
+					{
+						debug_uart_->print("0x");
+					}
+					debug_uart_->print(thingToPrint, base);
+				}
+			}
+			template <class T>
+			void debugPrintln(T thingToPrint, int base)
+			{
+				if(debug_uart_ != nullptr)
+				{
+					if(base == HEX)
+					{
+						debug_uart_->print("0x");
+					}
+					debug_uart_->println(thingToPrint, base);
 				}
 			}
 			void debugPrintln()

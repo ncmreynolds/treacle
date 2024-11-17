@@ -165,6 +165,85 @@ float treacleClass::getMaxDutyCycle(uint8_t index)
 	}
 	return 0;
 }
+uint32_t treacleClass::nodeLastSeen(uint8_t index)
+{
+	if(index < numberOfNodes)
+	{
+		return node[index].lastSeen;
+	}
+	return 0;
+}
+uint32_t treacleClass::nodeLastTick(uint8_t index, uint8_t transport)
+{
+	if(index < numberOfNodes && transport < numberOfActiveTransports)
+	{
+		return node[index].lastTick[transport];
+	}
+	return 0;
+}
+uint16_t treacleClass::nodeNextTick(uint8_t index, uint8_t transport)
+{
+	if(index < numberOfNodes && transport < numberOfActiveTransports)
+	{
+		return node[index].nextTick[transport];
+	}
+	return 0;
+}
+uint16_t treacleClass::nodeTxReliability(uint8_t index, uint8_t transport)
+{
+	if(index < numberOfNodes && transport < numberOfActiveTransports)
+	{
+		return node[index].txReliability[transport];
+	}
+	return 0;
+}
+uint16_t treacleClass::nodeRxReliability(uint8_t index)
+{
+	uint16_t reliability = 0;
+	if(index < numberOfNodes)
+	{
+		for(uint8_t transport = 0; transport < numberOfActiveTransports; transport++)
+		{
+			if(node[index].rxReliability[transport] > reliability)
+			{
+				reliability = node[index].rxReliability[transport];
+			}
+		}
+	}
+	return reliability;
+}
+uint16_t treacleClass::nodeTxReliability(uint8_t index)
+{
+	uint16_t reliability = 0;
+	if(index < numberOfNodes)
+	{
+		for(uint8_t transport = 0; transport < numberOfActiveTransports; transport++)
+		{
+			if(node[index].txReliability[transport] > reliability)
+			{
+				reliability = node[index].txReliability[transport];
+			}
+		}
+	}
+	return reliability;
+}
+uint16_t treacleClass::nodeRxReliability(uint8_t index, uint8_t transport)
+{
+	if(index < numberOfNodes && transport < numberOfActiveTransports)
+	{
+		return node[index].rxReliability[transport];
+	}
+	return 0;
+}
+uint8_t  treacleClass::nodeLastPayloadNumber(uint8_t index, uint8_t transport)
+{
+	if(index < numberOfNodes && transport < numberOfActiveTransports)
+	{
+		return node[index].lastPayloadNumber[transport];
+	}
+	return 0;
+}
+
 bool treacleClass::begin(uint8_t maxNodes)
 {
 	//The maximum number of nodes is used in creating a load of data structures
@@ -1516,6 +1595,7 @@ bool treacleClass::online(uint8_t index, uint8_t transport)
 {
 	return (node[index].txReliability[transport] >= 0x8000 || node[index].rxReliability[transport] >= 0x8000 || countBits(node[index].txReliability[transport]) > 8 || countBits(node[index].rxReliability[transport]) > 8);
 }
+/*
 uint32_t treacleClass::rxAge(uint8_t id)
 {
 	uint8_t nodeIndex = nodeIndexFromId(id);
@@ -1525,55 +1605,7 @@ uint32_t treacleClass::rxAge(uint8_t id)
 	}
 	return 0;
 }
-uint16_t treacleClass::rxReliability(uint8_t id)
-{
-	uint8_t nodeIndex = nodeIndexFromId(id);
-	uint16_t reliability = 0;
-	if(nodeIndex != maximumNumberOfNodes)
-	{
-		for(uint8_t index = 0; index < numberOfActiveTransports; index++)
-		{
-			if(node[nodeIndex].rxReliability[index] > reliability)
-			{
-				reliability = node[nodeIndex].rxReliability[index];
-			}
-		}
-	}
-	/*
-	if(nodeIndex != maximumNumberOfNodes)
-	{
-		if(espNowInitialised() == true)
-		{
-			if(loRaInitialised() == true)
-			{
-				return max(node[nodeIndex].rxReliability[espNowTransportId], node[nodeIndex].rxReliability[loRaTransportId]);
-			}
-			return node[nodeIndex].rxReliability[espNowTransportId];
-		}
-		else if(loRaInitialised() == true)
-		{
-			return node[nodeIndex].rxReliability[loRaTransportId];
-		}
-	}
-	*/
-	return reliability;
-}
-uint16_t treacleClass::txReliability(uint8_t id)
-{
-	uint8_t nodeIndex = nodeIndexFromId(id);
-	uint16_t reliability = 0;
-	if(nodeIndex != maximumNumberOfNodes)
-	{
-		for(uint8_t index = 0; index < numberOfActiveTransports; index++)
-		{
-			if(node[nodeIndex].txReliability[index] > reliability)
-			{
-				reliability = node[nodeIndex].txReliability[index];
-			}
-		}
-	}
-	return reliability;
-}
+*/
 /*
  *
  *	Status functions
