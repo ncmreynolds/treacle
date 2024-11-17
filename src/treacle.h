@@ -317,8 +317,8 @@ class treacleClass	{
 		#endif
 		//Messaging
 		bool online();										//Is treacle online? ie. has this node heard back from a peer that has heard it recently
-		void goOffline();									//Actively go offline
-		void goOnline();									//Actively go online (if possible and this will take a few seconds)
+		void forceOffline();								//Actively force the node offline
+		void goOnline();									//Go online (if possible and this will take a few seconds)
 		uint8_t nodes();									//Number of nodes
 		bool nodesChanged();								//Inform application if number of nodes has changed, resets on read if true
 		uint8_t reachableNodes();							//Number of reachable nodes
@@ -347,9 +347,12 @@ class treacleClass	{
 		//General
 		void setNodeName(char* name);						//Set the node name
 		char* getNodeName();								//Get the node name
+		char* getNodeNameFromId(uint8_t id);				//Get the node name of another node from its ID
+		char* getNodeNameFromIndex(uint8_t index);			//Get the node name of another node from its index
 		void setNodeId(uint8_t id);							//Set the nodeId
 		bool nodeIdChanged();								//Find out if the node name changed, resets on read if true
 		uint8_t getNodeId();								//Get the nodeId, which may have been autonegotiated
+		uint8_t getNodeId(uint8_t index);					//Get the nodeId of another node based on index
 		bool begin(uint8_t maxNodes = 8);					//Start treacle, optionally specify a max number of nodes
 		void end();											//Stop treacle
 		void enableDebug(Stream &);							//Start debugging on a stream
@@ -363,6 +366,7 @@ class treacleClass	{
 			selectedId,
 			online,
 			offline,
+			forcedOffline,
 			stopped};
 		state currentState = state::uninitialised;			//Current state
 		uint32_t lastStateChange = 0;						//Track time of state changes

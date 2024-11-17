@@ -41,6 +41,22 @@ char* treacleClass::getNodeName()
 {
 	return currentNodeName;
 }
+char* treacleClass::getNodeNameFromId(uint8_t id)
+{
+	uint8_t nodeIndex = nodeIndexFromId(id);
+	return getNodeNameFromIndex(nodeIndex);
+}
+char* treacleClass::getNodeNameFromIndex(uint8_t index)
+{
+	if(index < index)
+	{
+		if(node[index].name != nullptr)
+		{
+			return node[index].name;
+		}
+	}
+	return nullptr;
+}
 void treacleClass::setNodeId(uint8_t id)
 {
 	if(id >= minimumNodeId && id <= maximumNodeId)
@@ -61,6 +77,14 @@ bool treacleClass::nodeIdChanged()
 uint8_t treacleClass::getNodeId()
 {
 	return currentNodeId;
+}
+uint8_t treacleClass::getNodeId(uint8_t index)
+{
+	if(index < numberOfNodes)
+	{
+		return node[index].id;
+	}
+	return 0;
 }
 bool treacleClass::begin(uint8_t maxNodes)
 {
@@ -1500,8 +1524,12 @@ bool treacleClass::online()
 {
 	return currentState == state::online;
 }
-void goOffline()
+void treacleClass::forceOffline()
 {
+	if(currentState != state::forcedOffline)
+	{
+		currentState = state::forcedOffline;
+	}
 }
 void goOnline()
 {
