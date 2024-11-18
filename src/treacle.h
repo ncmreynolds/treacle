@@ -121,6 +121,7 @@
 		const char treacleDebugString_COBS[] PROGMEM = "COBS";
 	#endif
 	const char treacleDebugString_newSpaceState[] PROGMEM = "new state";
+	const char treacleDebugString_state[] PROGMEM = "state";
 	const char treacleDebugString_uninitialised[] PROGMEM = "uninitialised";
 	const char treacleDebugString_selectingId[] PROGMEM = "selectingId";
 	const char treacleDebugString_selectedId[] PROGMEM = "selectedId";

@@ -158,6 +158,8 @@ bool treacleClass::initialiseWiFi()								//Checks to see the state of the WiFi
 		debugPrint(treacleDebugString_treacleSpace);
 		debugPrint(treacleDebugString_checkingSpace);
 		debugPrint(treacleDebugString_WiFi);
+		debugPrint(' ');
+		debugPrint(treacleDebugString_state);
 		debugPrint(':');
 	#endif
 	if(WiFi.getMode() == WIFI_STA)
@@ -491,10 +493,10 @@ bool treacleClass::initialiseEspNow()
 		else
 		{
 			#if defined(TREACLE_DEBUG)
+				debugPrint(treacleDebugString_treacleSpace);
 				debugPrint("esp_now_init");
-				debugPrint(' ');
+				debugPrint(':');
 				debugPrintln(treacleDebugString_failed);
-				debugPrint(' ');
 			#endif
 		}
 		#if defined(TREACLE_DEBUG)
@@ -526,11 +528,12 @@ bool treacleClass::addEspNowPeer(uint8_t* macaddress)
 		debugPrint(treacleDebugString_treacleSpace);
 		debugPrint(treacleDebugString_addingSpace);
 		debugPrint(treacleDebugString_ESPNow);
+		debugPrint(' ');
 		debugPrint(treacleDebugString_peer);
 		debugPrint(':');
 	#endif
 	#if defined(ESP8266)
-		int8_t retval = esp_now_add_peer(macaddress, ESP_NOW_ROLE_COMBO, currentEspNowChannel, NULL, 0)
+		int8_t retval = esp_now_add_peer(macaddress, ESP_NOW_ROLE_COMBO, currentEspNowChannel, NULL, 0);
 		if(retval == ESP_OK)
 		{
 			#if defined(TREACLE_DEBUG)
