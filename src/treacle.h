@@ -20,6 +20,8 @@
 //	#define ARDUINO_AVR
 //#endif
 
+#define TREACLE_SUPPORT_COBS
+//#define TREACLE_DEBUG_COBS
 #if defined(ESP8266) || defined(ESP32)
 	#define TREACLE_SUPPORT_ESPNOW
 #endif
@@ -32,8 +34,6 @@
 #if defined(AVR) || defined(ESP8266) || defined(ESP32)
 	#define TREACLE_SUPPORT_MQTT
 #endif
-#define TREACLE_SUPPORT_COBS
-//#define TREACLE_DEBUG_COBS
 
 #define TREACLE_ENCRYPT_WITH_CBC
 //#define TREACLE_ENCRYPT_WITH_EAX
@@ -362,9 +362,9 @@ class treacleClass	{
 		//Node status & stats
 		bool online(uint8_t);								//Is a specific treacle node online? ie. has this node heard from it recently
 		//uint32_t rxAge(uint8_t);
+		uint32_t nodeLastSeen(uint8_t index);								//Get node stats
 		uint16_t nodeRxReliability(uint8_t index);							//Get node stats
 		uint16_t nodeTxReliability(uint8_t index);							//Get node stats
-		uint32_t nodeLastSeen(uint8_t index);								//Get node stats
 		uint32_t nodeLastTick(uint8_t index, uint8_t transport);			//Get node stats
 		uint16_t nodeNextTick(uint8_t index, uint8_t transport);			//Get node stats
 		uint16_t nodeTxReliability(uint8_t index, uint8_t transport);		//Get node stats
@@ -376,6 +376,8 @@ class treacleClass	{
 		void enableDebug(Stream &);							//Start debugging on a stream
 		void disableDebug();								//Stop debugging
 		bool debugEnabled();								//Check if debug is enabled
+		//Stats class
+		friend class treacleInfoClass;						//Info methods are in separate class
 	protected:
 	private:
 		//State machine
@@ -447,7 +449,7 @@ class treacleClass	{
 		{
 			uint8_t id = 0;
 			char* name = nullptr;
-			uint32_t lastSeen = 0;
+			//uint32_t lastSeen = 0;
 			uint32_t* lastTick = nullptr; 					//This is per transport
 			uint16_t* nextTick = nullptr; 					//This is per transport
 			uint16_t* txReliability = nullptr;				//This is per transport

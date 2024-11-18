@@ -169,7 +169,26 @@ uint32_t treacleClass::nodeLastSeen(uint8_t index)
 {
 	if(index < numberOfNodes)
 	{
-		return node[index].lastSeen;
+		if(numberOfActiveTransports == 1)	//Only one answer
+		{
+			return node[index].lastTick[0];
+		}
+		else if(numberOfActiveTransports == 2)	//Simple ternary comparison
+		{
+			return (node[index].lastTick[0] > node[index].lastTick[1] ? node[index].lastTick[0] : node[index].lastTick[1]);
+		}
+		else
+		{
+			uint32_t lastSeen = 0;
+			for(uint8_t transportIndex = 0; transportIndex < numberOfActiveTransports; transportIndex++)	//Iterate to find most recent
+			{
+				if(node[index].lastTick[transportIndex] > lastSeen)
+				{
+					lastSeen = node[index].lastTick[transportIndex];
+				}
+			}
+			return lastSeen;
+		}
 	}
 	return 0;
 }
@@ -252,60 +271,80 @@ bool treacleClass::begin(uint8_t maxNodes)
 	//The name is important so assign one if it is not set. This is based off MAC address on ESP8266/ESP32
 	if(currentNodeName == nullptr)
 	{
-		#if defined(TREACLE_SUPPORT_ESPNOW) && defined(TREACLE_SUPPORT_LORA) && defined(TREACLE_SUPPORT_COBS)
-			if(currentNodeName == nullptr && espNowEnabled() && loRaEnabled() && cobsEnabled())
+		char nameUniquePart[17];
+		sprintf_P(nameUniquePart, PSTR("%02X%02X%02X%02X%02X%02X%02X%02X"), UniqueID8[0] ,UniqueID8[1] ,UniqueID8[2] ,UniqueID8[3] ,UniqueID8[4] ,UniqueID8[5] ,UniqueID8[6],UniqueID8[7]);
+		uint8_t protocolPartLength = 2;
+		#if defined TREACLE_SUPPORT_COBS
+			if(cobsEnabled())
 			{
-				currentNodeName = new char[34];
-				sprintf_P(currentNodeName, PSTR("EspNow_LoRa_COBS_%02X%02X%02X%02X%02X%02X%02X%02X"),UniqueID8[0] ,UniqueID8[1] ,UniqueID8[2] ,UniqueID8[3] ,UniqueID8[4] ,UniqueID8[5] ,UniqueID8[6],UniqueID8[7]);  //Add the UniqueID to a standard name
+				protocolPartLength += strlen(treacleDebugString_COBS) + 1;
 			}
 		#endif
-		#if defined(TREACLE_SUPPORT_ESPNOW) && defined(TREACLE_SUPPORT_LORA)
-			if(currentNodeName == nullptr && espNowEnabled() && loRaEnabled())
+		#if defined TREACLE_SUPPORT_ESPNOW
+			if(espNowEnabled())
 			{
-				currentNodeName = new char[29];
-				sprintf_P(currentNodeName, PSTR("EspNow_LoRa_%02X%02X%02X%02X%02X%02X%02X%02X"),UniqueID8[0] ,UniqueID8[1] ,UniqueID8[2] ,UniqueID8[3] ,UniqueID8[4] ,UniqueID8[5] ,UniqueID8[6],UniqueID8[7]);  //Add the UniqueID to a standard name
+				protocolPartLength += strlen(treacleDebugString_ESPNow) + 1;
 			}
 		#endif
-		#if defined(TREACLE_SUPPORT_ESPNOW) && defined(TREACLE_SUPPORT_COBS)
-			if(currentNodeName == nullptr && espNowEnabled()&& cobsEnabled())
+		#if defined TREACLE_SUPPORT_LORA
+			if(loRaEnabled())
 			{
-				currentNodeName = new char[29];
-				sprintf_P(currentNodeName, PSTR("EspNow_COBS_%02X%02X%02X%02X%02X%02X%02X%02X"),UniqueID8[0] ,UniqueID8[1] ,UniqueID8[2] ,UniqueID8[3] ,UniqueID8[4] ,UniqueID8[5] ,UniqueID8[6],UniqueID8[7]);  //Add the UniqueID to a standard name
+				protocolPartLength += strlen(treacleDebugString_LoRa) + 1;
 			}
 		#endif
-		#if defined(TREACLE_SUPPORT_LORA) && defined(TREACLE_SUPPORT_COBS)
-			if(currentNodeName == nullptr && loRaEnabled() && cobsEnabled())
+		#if defined TREACLE_SUPPORT_UDP
+			if(UDPEnabled())
 			{
-				currentNodeName = new char[27];
-				sprintf_P(currentNodeName, PSTR("LoRa_COBS_%02X%02X%02X%02X%02X%02X%02X%02X"),UniqueID8[0] ,UniqueID8[1] ,UniqueID8[2] ,UniqueID8[3] ,UniqueID8[4] ,UniqueID8[5] ,UniqueID8[6],UniqueID8[7]);  //Add the UniqueID to a standard name
+				protocolPartLength += strlen(treacleDebugString_UDP) + 1;
 			}
 		#endif
-		#if defined(TREACLE_SUPPORT_ESPNOW)
-			if(currentNodeName == nullptr && espNowEnabled())
+		#if defined TREACLE_SUPPORT_MQTT
+			if(MQTTEnabled())
 			{
-				currentNodeName = new char[24];
-				sprintf_P(currentNodeName, PSTR("EspNow_%02X%02X%02X%02X%02X%02X%02X%02X"),UniqueID8[0] ,UniqueID8[1] ,UniqueID8[2] ,UniqueID8[3] ,UniqueID8[4] ,UniqueID8[5] ,UniqueID8[6],UniqueID8[7]);  //Add the UniqueID to a standard name
+				protocolPartLength += strlen(treacleDebugString_MQTT) + 1;
 			}
 		#endif
-		#if defined(TREACLE_SUPPORT_LORA)
-			if(currentNodeName == nullptr && loRaEnabled())
+		char nameProtocolPart[protocolPartLength];
+		//sprintf_P(nameProtocolPart,PSTR("Test"));
+		nameProtocolPart[0] = '\0';
+		char separator[2] = "_";
+		#if defined TREACLE_SUPPORT_COBS
+			if(cobsEnabled())
 			{
-				currentNodeName = new char[22];
-				sprintf_P(currentNodeName, PSTR("LoRa_%02X%02X%02X%02X%02X%02X%02X%02X"),UniqueID8[0] ,UniqueID8[1] ,UniqueID8[2] ,UniqueID8[3] ,UniqueID8[4] ,UniqueID8[5] ,UniqueID8[6],UniqueID8[7]);  //Add the UniqueID to a standard name
+				strcat_P(nameProtocolPart, treacleDebugString_COBS);
+				strcat(nameProtocolPart, separator);
 			}
 		#endif
-		#if defined(TREACLE_SUPPORT_COBS)
-			if(currentNodeName == nullptr && cobsEnabled())
+		#if defined TREACLE_SUPPORT_ESPNOW
+			if(espNowEnabled())
 			{
-				currentNodeName = new char[22];
-				sprintf_P(currentNodeName, PSTR("COBS_%02X%02X%02X%02X%02X%02X%02X%02X"),UniqueID8[0] ,UniqueID8[1] ,UniqueID8[2] ,UniqueID8[3] ,UniqueID8[4] ,UniqueID8[5] ,UniqueID8[6],UniqueID8[7]);  //Add the UniqueID to a standard name
+				strcat_P(nameProtocolPart, treacleDebugString_ESPNow);
+				strcat(nameProtocolPart, separator);
 			}
 		#endif
-		if(currentNodeName == nullptr)
-		{
-			currentNodeName = new char[22];
-			sprintf_P(currentNodeName, PSTR("node_%02X%02X%02X%02X%02X%02X%02X%02X"),UniqueID8[0] ,UniqueID8[1] ,UniqueID8[2] ,UniqueID8[3] ,UniqueID8[4] ,UniqueID8[5] ,UniqueID8[6],UniqueID8[7]);  //Add the UniqueID to a standard name
-		}
+		#if defined TREACLE_SUPPORT_LORA
+			if(loRaEnabled())
+			{
+				strcat_P(nameProtocolPart, treacleDebugString_LoRa);
+				strcat(nameProtocolPart, separator);
+			}
+		#endif
+		#if defined TREACLE_SUPPORT_UDP
+			if(UDPEnabled())
+			{
+				strcat_P(nameProtocolPart, treacleDebugString_UDP);
+				strcat(nameProtocolPart, separator);
+			}
+		#endif
+		#if defined TREACLE_SUPPORT_MQTT
+			if(MQTTEnabled())
+			{
+				strcat_P(nameProtocolPart, treacleDebugString_MQTT);
+				strcat(nameProtocolPart, separator);
+			}
+		#endif
+		currentNodeName = new char[strlen(nameProtocolPart) + strlen(nameUniquePart) + 1];
+		sprintf_P(currentNodeName, PSTR("%s%s"), nameProtocolPart, nameUniquePart);
 	}
 	#if defined(TREACLE_DEBUG)
 		debugPrint(treacleDebugString_treacleSpace);
@@ -1152,7 +1191,7 @@ void treacleClass::unpackPacket()
 							debugPrint('%');
 						#endif
 					}
-					node[nodeIndex].lastSeen = millis();	//Overall last seen
+					//node[nodeIndex].lastSeen = millis();	//Overall last seen
 					node[nodeIndex].rxReliability[receiveTransport] = (node[nodeIndex].rxReliability[receiveTransport] >> 1) | 0x8000;	//Potentially improve rxReliability
 					node[nodeIndex].lastTick[receiveTransport] = millis();															//Update last tick time
 					node[nodeIndex].nextTick[receiveTransport] = ((uint16_t)receiveBuffer[(uint8_t)headerPosition::nextTick])<<8;	//Update next tick time MSB
